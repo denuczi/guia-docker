@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Guía Docker">
+  <title>Guía Docker</title>
+  <!-- Plano: traducción fiel del distintivo de la barra de navegación
+    (contenedor cuadrado + glifo de petición `›`) a SVG sin dependencias.
+    Cuadrado oscuro con borde claro tenue: legible sobre pestañas claras
+    Y oscuras. Acento azul único y sobrio: bloque de cursor de terminal. -->
+  <rect x="4" y="4" width="56" height="56" rx="13" fill="#18181B" stroke="#F4F4F5" stroke-opacity="0.3" stroke-width="2.5"/>
+  <path d="M25 21 L37 32 L25 43" fill="none" stroke="#F4F4F5" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="42" y="27" width="7" height="10" rx="1.5" fill="#2563EB"/>
+</svg>

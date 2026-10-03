@@ -1,0 +1,69 @@
+---
+title: Laravel
+description: Cómo contenerizar Laravel 13 con PHP-FPM, por qué USER www-data no es una regla universal y cómo cachear Composer correctamente.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Laravel es un framework PHP, no un runtime con imagen propia. No existe un
+equivalente directo de `node:26-alpine`: la base es una imagen PHP (CLI o
+PHP-FPM según tu arquitectura).
+
+## Qué aprenderás
+
+- Qué base PHP elegir y por qué PHP-FPM no es un reverse proxy.
+- Qué versión de PHP exige Laravel 13 y por qué verificarla.
+- Por qué `USER www-data` no es una regla universal.
+- El patrón de caché de Composer y el problema de `vendor/` del host.
+
+## Base y versión
+
+Laravel 13 requiere PHP 8.3 o superior; verifica el rango soportado antes de
+publicar. PHP-FPM procesa PHP, pero no sirve tráfico público por sí solo:
+necesita un servidor web como Nginx delante. No confundas FPM con un proxy.
+
+## Composer con caché
+
+```dockerfile title="Dockerfile"
+FROM php:8.3-fpm-alpine
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader
+
+COPY . .
+```
+
+Los manifiestos (`composer.json`, `composer.lock`) se copian antes que el código
+para conservar la caché, igual que con Node. La instalación de producción
+excluye paquetes de desarrollo: no deben formar parte de la imagen runtime.
+
+<Callout variant="warning" title="No copies vendor del host">
+Si la imagen ejecuta `composer install`, no copies `vendor/` del host. Las
+dependencias del host pueden traer otra arquitectura, otra libc u otras
+extensiones PHP y fallar dentro del contenedor. Tampoco copies un `vendor`
+generado en tu máquina sobre el instalado en la imagen.
+</Callout>
+
+## Usuario y permisos, sin magia
+
+<Callout variant="info" title="Principio, no receta">
+Enseña el principio de privilegio mínimo, no una línea universal. Poner
+`USER www-data` a ciegas puede romper la gestión de procesos FPM o los
+permisos de rutas escribibles. Explica el usuario de la app, la propiedad de
+archivos y las rutas de escritura de tu despliegue concreto antes de fijarlo.
+</Callout>
+
+Revisa qué usuario ejecuta FPM en tu imagen, qué rutas deben ser escribibles
+(storage, cache) y quién debe poseerlas. Ajusta propiedad y usuario a tu caso.
+
+## Error común
+
+Tratar PHP-FPM como servidor público completo y publicar su puerto como si
+fuera Nginx. FPM escucha un protocolo de aplicación, no HTTP público: el
+tráfico entra por el servidor web y FPM procesa detrás.
+
+## Siguiente paso
+
+Continúa con [Seguridad](./../security/) para ordenar privilegio mínimo,
+secretos, puertos e imágenes confiables en un solo criterio.

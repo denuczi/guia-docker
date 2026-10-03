@@ -1,0 +1,601 @@
+/* Starlight shell mapping over semantic tokens.
+ *
+ * Layering: every visual value comes from `tokens.css` (loaded before this
+ * file via `customCss`). This file only maps tokens onto Starlight's `--sl-*`
+ * variables plus Expressive Code, focus, motion, and shell-shape rules.
+ * Component stylesheets MUST NOT introduce new colors; they consume the same
+ * tokens. Starlight ships its styles in `@layer` blocks, so these unlayered
+ * rules take precedence without `!important`.
+ *
+ * Full token map (representative):
+ * `--color-paper/surface`        -> `--sl-color-bg/bg-nav/bg-sidebar`
+ * `--color-border(-strong)`       -> `--sl-color-hairline(-shade)`
+ * `--color-text(-secondary)`      -> `--sl-color-text/gray-1/gray-2`
+ * `--color-accent(-hover,-soft)`  -> `--sl-color-accent/accent-high/accent-low`
+ * `--color-success/warning/danger`-> aside families (tip/caution/danger accents)
+ * `--color-accent` (info)         -> aside note family
+ * `--color-code-canvas`           -> `--code-background`, both themes
+ * `--font-sans/mono`             -> `--sl-font/--sl-font-mono`
+ * `--article-max-width` (780px)   -> `--sl-content-width: 48.75rem`
+ * `--sidebar-width` (260px)       -> `--sl-sidebar-width: 16.25rem`
+ * radii 6px                       -> aside + code-frame radius overrides
+ *
+ * Terminal-dark invariant: code blocks keep a dark canvas in BOTH themes.
+ * The canvas is pinned here via `--code-background`, and `astro.config.mjs`
+ * pins Expressive Code to the single `starlight-dark` syntax theme so token
+ * colors stay readable on that canvas in light mode too.
+ *
+ * Contrast note: dark-mode `--color-text-muted` (~4.1:1 on page background)
+ * is flagged in tokens.css and is therefore mapped only onto Starlight's
+ * tertiary slots (`--sl-color-gray-3`); body-adjacent slots use secondary.
+ */
+
+/* Light theme (also the no-preference fallback before Starlight hydrates). */
+:root,
+:root[data-theme="light"] {
+	--sl-font: var(--font-sans);
+	--sl-font-mono: var(--font-mono);
+	--sl-content-width: 48.75rem;
+	--sl-sidebar-width: 16.25rem;
+	--sl-line-height: 1.7;
+	--sl-line-height-headings: 1.2;
+
+	/* Neutral ramp remapped onto documentation tokens. */
+	--sl-color-white: var(--color-text);
+	--sl-color-black: var(--color-surface);
+	--sl-color-gray-1: var(--color-text);
+	--sl-color-gray-2: var(--color-text-secondary);
+	--sl-color-gray-3: var(--color-text-muted);
+	--sl-color-gray-4: var(--color-border-strong);
+	--sl-color-gray-5: var(--color-border);
+	--sl-color-gray-6: var(--color-surface-muted);
+	--sl-color-gray-7: var(--color-paper);
+
+	/* Interaction accent. */
+	--sl-color-accent-low: var(--color-accent-soft);
+	--sl-color-accent: var(--color-accent);
+	--sl-color-accent-high: var(--color-accent-hover);
+
+	/* Surfaces and text. */
+	--sl-color-text: var(--color-text);
+	--sl-color-text-accent: var(--color-accent);
+	--sl-color-text-invert: var(--color-surface);
+	--sl-color-bg: var(--color-paper);
+	--sl-color-bg-nav: var(--color-paper);
+	--sl-color-bg-sidebar: var(--color-surface);
+	--sl-color-bg-inline-code: var(--color-surface-muted);
+	--sl-color-hairline-light: var(--color-border);
+	--sl-color-hairline: var(--color-border);
+	--sl-color-hairline-shade: var(--color-border-strong);
+
+	/* Aside (callout) hue families mapped onto semantic tokens.
+	 * Starlight variants resolve through these: note -> blue, tip -> purple,
+	 * caution -> orange, danger -> red. Tints are derived with color-mix so
+	 * tokens.css stays strictly DESIGN-faithful (no extra tint tokens). */
+	--sl-hue-blue: 221;
+	--sl-color-blue-low: var(--color-accent-soft);
+	--sl-color-blue: var(--color-accent);
+	--sl-color-blue-high: var(--color-accent-hover);
+	--sl-hue-purple: 142;
+	--sl-color-purple-low: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
+	--sl-color-purple: var(--color-success);
+	--sl-color-purple-high: var(--color-success);
+	--sl-hue-orange: 32;
+	--sl-color-orange-low: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+	--sl-color-orange: var(--color-warning);
+	--sl-color-orange-high: var(--color-warning);
+	--sl-hue-red: 0;
+	--sl-color-red-low: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+	--sl-color-red: var(--color-danger);
+	--sl-color-red-high: var(--color-danger);
+}
+
+:root[data-theme="dark"] {
+	/* Neutral ramp remapped onto documentation tokens. */
+	--sl-color-white: var(--color-text);
+	--sl-color-black: var(--color-paper);
+	--sl-color-gray-1: var(--color-text);
+	--sl-color-gray-2: var(--color-text-secondary);
+	--sl-color-gray-3: var(--color-text-muted);
+	--sl-color-gray-4: var(--color-border-strong);
+	--sl-color-gray-5: var(--color-border);
+	--sl-color-gray-6: var(--color-surface-raised);
+
+	/* Interaction accent (brightened for near-black surfaces). */
+	--sl-color-accent-low: var(--color-accent-soft);
+	--sl-color-accent: var(--color-accent);
+	--sl-color-accent-high: var(--color-accent-hover);
+
+	/* Surfaces and text. */
+	--sl-color-text: var(--color-text);
+	--sl-color-text-accent: var(--color-accent);
+	--sl-color-text-invert: var(--color-paper);
+	--sl-color-bg: var(--color-paper);
+	--sl-color-bg-nav: var(--color-surface);
+	--sl-color-bg-sidebar: var(--color-surface);
+	--sl-color-bg-inline-code: var(--color-surface-raised);
+	--sl-color-hairline-light: var(--color-border);
+	--sl-color-hairline: var(--color-border);
+	--sl-color-hairline-shade: var(--color-border-strong);
+
+	/* Aside hue families, same semantic mapping as light theme. */
+	--sl-hue-blue: 213;
+	--sl-color-blue-low: var(--color-accent-soft);
+	--sl-color-blue: var(--color-accent);
+	--sl-color-blue-high: var(--color-accent-hover);
+	--sl-hue-purple: 142;
+	--sl-color-purple-low: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+	--sl-color-purple: var(--color-success);
+	--sl-color-purple-high: var(--color-success);
+	--sl-hue-orange: 38;
+	--sl-color-orange-low: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface));
+	--sl-color-orange: var(--color-warning);
+	--sl-color-orange-high: var(--color-warning);
+	--sl-hue-red: 0;
+	--sl-color-red-low: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface));
+	--sl-color-red: var(--color-danger);
+	--sl-color-red-high: var(--color-danger);
+}
+
+/* Terminal-dark code canvas in both themes. Expressive Code declares
+ * `--code-background` on `.frame` itself (editor and terminal variants), so
+ * the override must target the frame: custom properties inherit, and any
+ * declaration directly on `.frame` would shadow an inherited value from an
+ * ancestor no matter the ancestor rule's specificity. These theme-scoped
+ * selectors outrank EC's `.expressive-code .frame(.is-terminal)` rules, so
+ * the canvas cannot flip back to a light surface when the page theme does. */
+:root[data-theme="light"] .expressive-code .frame,
+:root[data-theme="dark"] .expressive-code .frame {
+	--code-background: var(--color-code-canvas);
+}
+
+/* Shell shape: documentation precision means 6px radii on cards and code. */
+.starlight-aside {
+	border-radius: var(--radius-card);
+	/* Craft-floor ban: no colored border-left/right above 1px on callouts.
+	 * Starlight ships `border-inline-start: 0.25rem solid <semantic>` (4px
+	 * colored bar = AI slop). Replace with a precise 1px full hairline in
+	 * the semantic color + soft tinted background. Meaning is carried by
+	 * the required title text plus Aside's icon, never by color alone. */
+	border: 1px solid var(--sl-color-asides-border);
+	border-inline-start: 1px solid var(--sl-color-asides-border);
+}
+
+/* Header height single source (58px).
+ *
+ * Starlight core never reads `--header-height`; every chrome offset hangs
+ * off `--sl-nav-height` (3.5rem mobile / 4rem desktop in core props). This
+ * one unlayered mapping repoints all of them at the token at once: the
+ * fixed header height itself, desktop sidebar-pane `inset-block`,
+ * `.main-frame` top padding, right-sidebar `padding-top`, mobile TOC `top`,
+ * and the `scroll-padding-top` anchor offset in Page.astro. The search
+ * dialog is NOT anchored to header height (fixed `4rem` top margin in core
+ * Search), so it needs no change: that top air still clears a 58px header.
+ * Core flex/grid centering (`align-items`/`align-content`) keeps the brand
+ * lockup, theme toggle, and search trigger vertically centered at the new
+ * height in both themes; mobile keeps the stock popover behavior. */
+:root {
+	--sl-nav-height: var(--header-height);
+}
+
+/* Global 1440px shell (DESIGN.md widths; tokens.css owns the value).
+ *
+ * Root cause of the ultrawide stretch: `--page-max-width` was declared in
+ * tokens.css but consumed by NO rule. Starlight core sizes every column as
+ * a fraction of 100% viewport (TwoColumnContent widths, fixed full-width
+ * header) with no viewport cap, so past 1440px the sidebar, article, and
+ * TOC drift apart edge to edge. These three rules freeze the layout at
+ * exactly the 1440px-viewport arrangement on wider screens:
+ * - `.main-frame` (in-flow) centers within the cap;
+ * - the two viewport-anchored fixed elements (header, desktop sidebar
+ *   pane) are re-anchored to the shell with gutters that collapse to zero
+ *   at or below 1440px, leaving stock behavior — including the mobile
+ *   popover sidebar — untouched.
+ * At the frozen 1440px geometry the DESIGN.md proportions hold: 260px
+ * sidebar, 780px article cap (`--sl-content-width`), ~228px TOC column.
+ * Gutters are pure empty space (no paint), and no rule sizes anything at
+ * `100vw`, so no horizontal overflow appears at any width. */
+.main-frame {
+	width: 100%;
+	max-width: var(--page-max-width);
+	margin-inline: auto;
+}
+.page > header.header {
+	inset-inline-start: max(0px, calc((100vw - var(--page-max-width)) / 2));
+	inset-inline-end: max(0px, calc((100vw - var(--page-max-width)) / 2));
+	width: auto;
+}
+@media (min-width: 50rem) {
+	.sidebar-pane {
+		inset-inline-start: max(0px, calc((100vw - var(--page-max-width)) / 2));
+	}
+}
+
+/* Vercel-like editorial shell: 58px header with a SINGLE bottom hairline
+ * (never shadow), compact sidebar with muted group labels and accent-only
+ * active state, 780px reading column, restrained neutrals, no gradients or
+ * card soup.
+ *
+ * The hairline lives on exactly one selector: the real header element
+ * (`<header class="header">` inside `.page`, see Starlight's PageFrame).
+ * Dead selectors (`.sl-nav`, `header.site-header`) and — critically —
+ * `.site-title` MUST NOT reappear here: painting `border-bottom` on the
+ * brand anchor drew a 1px line directly under the brand text (the reported
+ * "underline") plus a second floating line inside the header zone. Tone is
+ * `--sl-color-hairline-shade` to match Starlight core's header rule and the
+ * sidebar's `border-inline-end`, so the header/sidebar junction is one
+ * consistent line family. */
+.page > header.header {
+	border-bottom: 1px solid var(--sl-color-hairline-shade);
+	box-shadow: none;
+}
+
+/* Neutral brand by explicit user request: the site title renders in page
+ * text, never in accent blue. Starlight's core paints `.site-title` with
+ * `--sl-color-text-accent`; this unlayered rule wins over that layered one.
+ * The blue accent stays reserved for links, active navigation, and focus
+ * (DESIGN.md accent discipline). */
+.site-title {
+	color: var(--color-text);
+}
+
+.site-title:hover {
+	color: var(--color-text);
+}
+
+/* Brand underline ban (explicit user request): the lockup must never read
+ * as an underlined link — no `text-decoration` AND no `border-bottom`
+ * substitute in any state (link/visited/hover/active/focus). Defense in
+ * depth next to the scoped guards in SiteTitle.astro. The keyboard focus
+ * ring is intentionally untouched: the global `:focus-visible` outline
+ * below still applies, and this rule never sets `outline: none`. */
+.site-title,
+.site-title:link,
+.site-title:visited,
+.site-title:hover,
+.site-title:active,
+.site-title:focus,
+.site-title:focus-visible {
+	text-decoration: none;
+	border-bottom: 0;
+}
+
+/* Header divider removal (explicit user request): Starlight's core Header
+ * paints a 1px vertical divider immediately left of the theme toggle via
+ * `.social-icons::after` (`content: ''` + `border-inline-end`), and that
+ * pseudo-element renders even when no social links are configured. This
+ * unlayered rule removes ONLY that divider; the header bottom hairline,
+ * layout, and every other header rule above stay untouched. */
+.header .social-icons::after {
+	content: none;
+}
+
+/* Search centering (explicit user request, desktop only).
+ *
+ * Why two tiers: on desktop the header is a 3-column grid (brand | search
+ * 1fr | utilities) whose outer columns are ASYMMETRIC (brand column ~ the
+ * sidebar width, utilities column ~ just toggle+icon). Centering the
+ * trigger inside the middle cell therefore centers it inside an off-center
+ * cell — geometrically centered, optically off. True optical centering
+ * means centering relative to the header BAR, not the cell.
+ *
+ * Tier 1 (50–64rem): keep cell-centering (`justify-content` + auto
+ * margins). The viewport is too narrow here for bar-centering without
+ * risking overlap with the brand/utilities, and cell-centering is strictly
+ * better than the stock start-hug.
+ *
+ * Tier 2 (>=64rem): absolutely center the trigger on the header bar
+ * (`left: 50%` + translate, relative to the fixed `.header`, since every
+ * wrapper between it and the button is `display: contents`). Overlap
+ * arithmetic at the tightest tier-2 width (1024px): brand column ≈ 260px,
+ * utilities ≈ 160px, trigger 352px wide centered at 512px → spans 336–688,
+ * clear of both sides (76px+ each); wider viewports only gain clearance.
+ * `top: 50%` + Y-translate keeps vertical centering once the button leaves
+ * the flow (the middle cell stays as an empty grid track, so columns 1/3
+ * do not shift). Mobile keeps the stock flex row (neither query applies),
+ * so the icon trigger stays reachable with no overlap. The search dialog
+ * itself is untouched. */
+@media (min-width: 50rem) {
+	.header > div:nth-child(2) {
+		justify-content: center;
+	}
+	.header site-search button[data-open-modal] {
+		margin-inline: auto;
+	}
+}
+@media (min-width: 64rem) {
+	.header site-search button[data-open-modal] {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		width: 22rem;
+		max-width: 22rem;
+		margin-inline: 0;
+	}
+}
+
+.sl-sidebar,
+.sidebar,
+#starlight__sidebar {
+	font-size: var(--text-caption);
+	line-height: var(--leading-caption);
+}
+
+/* Sidebar top-glow (matches the page treatment requested by the user).
+ * Same accent-derived color-mix fade as `body` above, contrast-safe in both
+ * themes: at most ~6-8% accent at the very top edge, fading to transparent
+ * well within --glow-height, so sidebar labels keep their ledger contrast
+ * in light (~15:1) and dark (~17:1) mode. Static paint, no animation. */
+.sidebar-pane {
+	background-image: linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--color-accent) 6%, transparent),
+		transparent var(--glow-height)
+	);
+	background-repeat: no-repeat;
+	/* Slim, quiet, but never hidden: keyboard and touch users keep a usable
+	 * scroll affordance on the sidebar's own scroll container. */
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-border-strong) transparent;
+}
+
+:root[data-theme='dark'] .sidebar-pane {
+	background-image: linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--color-accent) 8%, transparent),
+		transparent var(--glow-height)
+	);
+}
+
+.sidebar-pane::-webkit-scrollbar {
+	width: 8px;
+}
+
+.sidebar-pane::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.sidebar-pane::-webkit-scrollbar-thumb {
+	background-color: var(--color-border-strong);
+	border-radius: 8px;
+}
+
+/* Heading anchor links (emitted by Starlight's rehype build plugin, not by
+ * a component, so behavior is enhanced via the MarkdownContent override and
+ * only restyled here — never hidden). Barely-there at rest, accent only on
+ * hover/focus, success/error tint while the copy feedback state (see the
+ * MarkdownContent script) is active. The icon size lives on the wrapper so
+ * the reserved end-of-line space shrinks with the icon. Starlight's own
+ * hover/focus-only opacity rule still applies on hover-capable devices. */
+.sl-markdown-content .sl-heading-wrapper {
+	--sl-anchor-icon-size: 0.55em;
+}
+
+.sl-markdown-content .sl-anchor-link {
+	color: color-mix(in srgb, var(--color-text-muted) 45%, transparent);
+}
+
+.sl-markdown-content .sl-anchor-link:hover,
+.sl-markdown-content .sl-anchor-link:focus-visible {
+	color: var(--color-accent);
+}
+
+.sl-markdown-content .sl-anchor-link[data-state='success'] {
+	color: var(--color-success);
+}
+
+/* Swap the link glyph for a check while feedback is active: icon change plus
+ * color, never color alone. Rendered on the icon span (not the link, whose
+ * ::after Starlight reserves for the touch-area expansion). */
+.sl-markdown-content .sl-anchor-link[data-state='success'] .sl-anchor-icon svg {
+	display: none;
+}
+
+.sl-markdown-content .sl-anchor-link[data-state='success'] .sl-anchor-icon::after {
+	content: '✓';
+	font-size: var(--sl-anchor-icon-size);
+	font-weight: 700;
+	line-height: 1;
+}
+
+.sl-markdown-content .sl-anchor-link[data-state='error'] {
+	color: var(--color-danger);
+}
+
+.sl-sidebar a[aria-current='page'],
+.sidebar a[aria-current='page'] {
+	color: var(--color-accent);
+	background-color: var(--color-accent-soft);
+	border-radius: var(--radius-control);
+	font-weight: 500;
+}
+
+.sl-markdown-content {
+	max-width: var(--article-max-width);
+}
+
+.sl-markdown-content h1 {
+	font-size: var(--text-heading-lg);
+	line-height: var(--leading-heading-lg);
+	/* Display treatment: tighter tracking at large sizes plus balanced
+	 * wrapping, so headings read as designed type rather than default
+	 * bold text. Weight comes from --weight-heading-lg (700). */
+	letter-spacing: var(--tracking-display);
+	font-weight: var(--weight-heading-lg);
+	text-wrap: balance;
+}
+
+.sl-markdown-content h2 {
+	font-size: var(--text-heading);
+	line-height: var(--leading-heading);
+	letter-spacing: var(--tracking-heading);
+	margin-top: var(--space-48);
+	text-wrap: balance;
+}
+
+.sl-markdown-content h3 {
+	font-size: var(--text-heading-sm);
+	line-height: var(--leading-heading-sm);
+	margin-top: var(--space-32);
+	text-wrap: balance;
+}
+
+.sl-markdown-content p,
+.sl-markdown-content li {
+	max-width: var(--measure-body);
+}
+
+/* `pretty` avoids short orphan words at line ends in long-form prose;
+ * ignored by browsers without support, so reading never breaks. */
+.sl-markdown-content p,
+.sl-markdown-content li {
+	text-wrap: pretty;
+}
+
+.sl-markdown-content a {
+	color: var(--color-accent);
+	text-underline-offset: 3px;
+}
+
+.sl-markdown-content :not(pre) > code {
+	font-family: var(--font-mono);
+	font-size: 0.875em;
+	background-color: var(--sl-color-bg-inline-code);
+	border: 1px solid var(--sl-color-hairline-light);
+	border-radius: var(--radius-control);
+	padding: 1px 5px;
+}
+
+.expressive-code .frame {
+	border-radius: var(--radius-card);
+}
+
+/* Long commands scroll horizontally inside the block; the page never gains
+ * a sideways scrollbar from code. */
+.expressive-code pre {
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+/* Single command component: every command site-wide is a fenced
+ * ```bash title="terminal" block rendered by Expressive Code's terminal
+ * frame — the reference style (networks.mdx "Publicar es otra cosa": small
+ * "terminal" header, Shiki-colored command parts, copy button). The former
+ * custom CodeBlock/CopyButton components are deleted; no second visual
+ * language for commands remains. Result blocks use the same terminal frame
+ * (```text title="resultado" frame="terminal"```) with dimmed code below.
+ *
+ * Unlayered rules win over Expressive Code's `@layer` styles without
+ * `!important`. Everything is scoped to `.frame.is-terminal`, so file
+ * frames (Dockerfile/YAML/diagrams) keep the DESIGN.md canvas tokens and
+ * only command/result frames take the user-mandated pure-black canvas. */
+:root[data-theme='light'] .expressive-code .frame.is-terminal,
+:root[data-theme='dark'] .expressive-code .frame.is-terminal {
+	--code-background: var(--color-command-canvas);
+	--ec-frm-trmBg: var(--color-command-canvas);
+	--ec-frm-trmTtbBg: var(--color-command-canvas);
+	/* Single hairline system: outer border, titlebar divider, and code
+	 * border all resolve to one quiet code-foreground hairline, so header
+	 * and body read as one frame with exactly one divider. */
+	--ec-brdCol: color-mix(in srgb, var(--color-code-text) 14%, transparent);
+	--ec-frm-trmTtbBrdBtmCol: color-mix(in srgb, var(--color-code-text) 14%, transparent);
+}
+
+/* Compact quiet header: small muted label, dimmer and smaller than the code
+ * (13px bright foreground). Layout (centered title, status dots, copy slot)
+ * stays Expressive Code's terminal chrome; only the type is hushed. */
+.expressive-code .frame.is-terminal .header {
+	font-size: var(--text-code-label);
+	line-height: var(--leading-code-label);
+}
+
+.expressive-code .frame.is-terminal .title {
+	color: color-mix(in srgb, var(--color-code-text) 62%, transparent);
+	font-weight: 400;
+}
+
+/* Result blocks share the command frame with dimmed code (the same
+ * distinction the deleted CodeBlock applied to `kind="output"`). The
+ * "resultado" title plus the surrounding prose carry the meaning, never
+ * dimming alone. Scoped to terminal-framed `text` blocks so file/diagram
+ * frames are untouched. */
+.expressive-code .frame.is-terminal pre[data-language='text'] {
+	opacity: 0.85;
+}
+
+/* Copy feedback: Expressive Code already shows a green "¡Copiado!" tooltip
+ * that auto-reverts (see ec.*.js: show at once, hide at 1500ms, remove at
+ * 2500ms). This tints the icon button itself green while that confirmation
+ * is visible, then reverts with it. Text plus color, never color alone. */
+.expressive-code .frame .copy:has(.feedback.show) button::before {
+	border-color: var(--color-success);
+	opacity: 1;
+}
+
+.expressive-code .frame .copy:has(.feedback.show) button::after {
+	background-color: var(--color-success);
+}
+
+/* Page atmosphere (explicit user request; DESIGN.md discourages decorative
+ * gradients, so this stays extremely subtle and static). A pale sky tint
+ * fades into paper in light mode; a deep-navy whisper fades into void in
+ * dark mode — both derived from the theme accent via color-mix, so no new
+ * color values exist and each theme gets its own tint automatically.
+ * Contrast ledger: at most ~6-7% accent at the very top edge (body text
+ * starts where the tint is near zero), shifting the background a few
+ * percent — light body stays ~15:1, dark body ~17:1, both far above AA.
+ * Static image, no animation, pointer-transparent by construction
+ * (background paint, never an overlay element). */
+body {
+	background-image: linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--color-accent) 6%, transparent),
+		transparent var(--glow-height)
+	);
+	background-size: 100% var(--glow-height);
+	background-repeat: no-repeat;
+	/* Fixed glow (scroll bug fix): without this, the non-repeating body
+	 * background is painted relative to the document, so the top glow
+	 * travels with content on scroll. `fixed` pins it relative to the
+	 * viewport instead, so it stays put in both themes. Static paint, no
+	 * animation; contrast and the reduced-motion guard below are untouched. */
+	background-attachment: fixed;
+}
+
+:root[data-theme='dark'] body {
+	background-image: linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--color-accent) 8%, transparent),
+		transparent var(--glow-height)
+	);
+}
+
+/* Visible keyboard focus everywhere. `:where()` keeps specificity at zero so
+ * component-level focus styles can still refine it; Starlight's drawer,
+ * search dialog, and sidebar links all inherit this baseline. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
+/* Functional motion only. Honors reduced-motion preferences across sidebar
+ * collapse, search dialog, copy confirmation, and drawer transitions. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+	/* The global `*` reset above does not reach view-transition
+	 * pseudo-elements, so ClientRouter page swaps animate for
+	 * reduced-motion users without this explicit guard. */
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation: none !important;
+	}
+}

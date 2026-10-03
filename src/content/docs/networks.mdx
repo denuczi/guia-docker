@@ -1,0 +1,229 @@
+---
+title: Redes
+description: Cómo se comunican los contenedores entre sí, por qué usar redes definidas por el usuario y cuándo publicar (o no) un puerto.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+En [Volúmenes](./../volumes/) los datos de perfil sobrevivieron dentro de un volumen. Ahora aparece un problema nuevo. Una aplicación sirve las páginas y una base de datos guarda las filas. La aplicación necesita preguntar a la base de datos. Viven en contenedores distintos y todavía no tienen forma de hablarse.
+
+La salida fácil sería publicar la base de datos con `-p` para alcanzarla desde fuera. Pero `-p` la deja visible para todo tu equipo sin motivo. Nadie fuera necesita entrar a la base de datos. Solo la aplicación necesita conversar con ella por un canal privado. Esa necesidad es la que resuelve una red creada por ti.
+
+## Tu aplicación necesita un canal privado
+
+Piensa en dos piezas. Un contenedor `web` con `nginx:1.29` responde en el navegador. Un contenedor `db` con `postgres:18-alpine` guarda los perfiles. La única conversación necesaria es `web` pide y `db` responde.
+
+Ninguna de esas dos piezas necesita exponer la base de datos a tu equipo. Publicarla abriría una puerta que nadie va a usar. Lo que falta es un canal privado donde solo esos contenedores se vean entre sí. En Docker ese canal se llama red definida por el usuario. La creas tú, le pones nombre y decides qué contenedores entran.
+
+## Crea la red con un nombre que tú eliges
+
+Antes de crear nada, mira las redes que ya existen:
+
+```bash title="terminal"
+docker network ls
+```
+
+```text title="resultado" frame="terminal"
+NETWORK ID     NAME        DRIVER    SCOPE
+a1b2c3d4e5f6   bridge      bridge    local
+b7c8d9e0f1a2   host        host      local
+c3d4e5f6a7b8   none        null      local
+```
+
+Esas tres vienen con Docker. Tu red todavía no aparece. Las columnas que importan son `NAME`, que es el nombre que usas en los comandos, y `DRIVER`, que en tu red será `bridge`. El identificador largo solo sirve como referencia interna.
+
+Ahora crea tu canal privado:
+
+```bash title="terminal"
+docker network create app-network
+```
+
+```text title="resultado" frame="terminal"
+f4a9c2e1b3d84f6a8c1e5d2a9b4c6e7d
+```
+
+`app-network` es un nombre que tú inventas. Puede ser cualquier nombre válido que aún no exista. El comando crea un canal privado vacío con ese nombre. La respuesta es solo el identificador de la red creada. Los valores exactos de tu equipo serán distintos.
+
+Verifica que ahora sí existe:
+
+```bash title="terminal"
+docker network ls
+```
+
+```text title="resultado" frame="terminal"
+NETWORK ID     NAME          DRIVER    SCOPE
+a1b2c3d4e5f6   bridge        bridge    local
+b7c8d9e0f1a2   host          host      local
+c3d4e5f6a7b8   none          null      local
+f4a9c2e1b3d8   app-network   bridge    local
+```
+
+Tu nombre aparece en la lista con controlador `bridge`. La red existe y está vacía. Todavía no hay ningún contenedor dentro.
+
+## La base de datos nace conectada a esa red
+
+Este comando crea un solo contenedor. No conecta dos imágenes ni une nada existente. Crea `db` desde la imagen `postgres:18-alpine` y lo deja conectado a `app-network` desde su nacimiento:
+
+```bash title="terminal"
+docker run -d --name db --network app-network postgres:18-alpine
+```
+
+Cada parte tiene un trabajo. `-d` lo deja corriendo en segundo plano. `--name db` le da el nombre `db`, que será su forma de ser encontrado. `--network app-network` lo hace nacer dentro de tu red. `postgres:18-alpine` es la plantilla: el motor `postgres` en su variante `18-alpine`.
+
+Hasta aquí hay un solo contenedor en la red: `db`. Nada puede demostrar que el nombre se resuelve porque no hay otro contenedor que lo pregunte. En un uso real esta imagen pide sus propias variables de configuración. Ese detalle completo pertenece a la lección de Compose. Aquí lo que importa es la red: el contenedor nació dentro de ella.
+
+## Un segundo contenedor demuestra que el nombre se resuelve
+
+Ahora sí habrá dos contenedores a la vez por un momento. El segundo es desechable. Solo pregunta dónde está `db` y luego se borra solo:
+
+```bash title="terminal"
+docker run --rm --network app-network alpine ping -c 2 db
+```
+
+`--rm` borra el contenedor testigo al terminar. `--network app-network` lo pone en la misma red que `db`. `alpine` es una imagen mínima que sirve para esta prueba. `ping -c 2 db` le pide dos respuestas al nombre `db`, sin ninguna dirección IP escrita a mano.
+
+```text title="resultado" frame="terminal"
+PING db (172.18.0.2): 56 data bytes
+64 bytes from 172.18.0.2: seq=0 ttl=64 time=0.120 ms
+64 bytes from 172.18.0.2: seq=1 ttl=64 time=0.095 ms
+--- db ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+```
+
+El nombre `db` se convirtió en una dirección y respondió dos veces. Las direcciones exactas de tu equipo serán distintas. Lo importante es que no escribiste ninguna IP.
+
+Aquí está la idea central de la lección. En la red `bridge` que trae Docker por defecto, los contenedores no se resuelven entre sí por su nombre. En una red que tú creas, Docker resuelve los nombres de contenedor automáticamente gracias a su DNS interno. La prueba que acabas de ver lo confirma: en `app-network` el nombre `db` alcanza.
+
+<Callout variant="warning" title="Nunca fijes IP de contenedor">
+Las direcciones IP de los contenedores cambian en cada recreación. La salida de `ping` muestra una IP solo como prueba de que el nombre resolvió. Usa siempre el nombre del contenedor como dirección interna, nunca la IP que viste hoy.
+</Callout>
+
+## Mira quién está conectado con inspect
+
+`inspect` es la herramienta de observación de esta lección. No cambia nada. Revela quién está conectado a la red en su sección `Containers`, con los nombres que Docker puede resolver:
+
+```bash title="terminal"
+docker network inspect app-network
+```
+
+```text title="resultado" frame="terminal"
+[
+  {
+    "Name": "app-network",
+    "Driver": "bridge",
+    "Containers": {
+      "e9f2a4c6b8d0": {
+        "Name": "db",
+        "IPv4Address": "172.18.0.2/16"
+      }
+    }
+  }
+]
+```
+
+La salida real es más larga. Lee solo la sección `Containers`. Cada entrada muestra el `Name` del contenedor conectado. Si el testigo desechable ya terminó, verás solo a `db`. Si lo ejecutas mientras otro contenedor usa la red, verás uno por cada conectado. Los identificadores y las direcciones exactas de tu equipo serán distintos.
+
+## Publicar un puerto abre una puerta hacia tu equipo
+
+Dentro de `app-network` ningún contenedor necesita `-p` para hablar con otro. La base de datos se queda sin puerto publicado y aun así responde a quien comparte su red. Eso la mantiene invisible para tu equipo, que es justo lo que quieres.
+
+`-p` existe solo para la entrada desde tu equipo hacia un contenedor. Este comando crea el contenedor `web` dentro de la misma red y además publica su puerto:
+
+```bash title="terminal"
+docker run -d --name web --network app-network -p 8080:80 nginx:1.29
+```
+
+`--network app-network` lo pone en el canal privado junto a `db`. `-p 8080:80` abre la puerta hacia tu equipo: el puerto `8080` de tu equipo lleva al puerto `80` del contenedor. Observa la diferencia: `web` tiene `-p` y `db` no tiene ninguno.
+
+La prueba es visible. Abre `http://localhost:8080` en el navegador y responde `web`. La base de datos no tiene dirección en el navegador porque no publicó nada. Son dos direcciones distintas: tú alcanzas a `web` por el puerto publicado y `web` alcanza a `db` por su nombre dentro de la red.
+
+<Callout variant="info" title="Regla de puertos">
+Publica solo los puertos que tu equipo realmente necesita, normalmente la aplicación web. Cada puerto publicado es superficie de ataque y posible conflicto. La base de datos queda sin `-p`.
+</Callout>
+
+## Desconecta y borra la red cuando termines
+
+Una red con contenedores dentro no se deja borrar. Si lo intentas con `db` o `web` todavía conectados, Docker se niega:
+
+```bash title="terminal"
+docker network rm app-network
+```
+
+```text title="resultado" frame="terminal"
+Error response from daemon: network app-network has active endpoints
+```
+
+El mensaje dice que la red tiene extremos activos, o sea contenedores conectados. El arreglo seguro es detener y eliminar primero esos contenedores:
+
+```bash title="terminal"
+docker stop web
+```
+
+```bash title="terminal"
+docker rm web
+```
+
+```bash title="terminal"
+docker stop db
+```
+
+```bash title="terminal"
+docker rm db
+```
+
+Con la red ya vacía, el borrado funciona:
+
+```bash title="terminal"
+docker network rm app-network
+```
+
+Si quieres soltar un solo contenedor sin borrarlo, desconéctalo por su nombre:
+
+```bash title="terminal"
+docker network disconnect app-network db
+```
+
+Para la gestión diaria te bastan dos comandos de una línea cada uno. `docker network ls` lista tus redes. `docker network prune` borra las redes que ningún contenedor usa. La profundidad de la limpieza, con sus advertencias, pertenece a la lección de [Limpieza](./../cleanup/).
+
+## Errores que vas a ver tarde o temprano
+
+### La red ya existe
+
+Lo que pasó: crear `app-network` responde que una red con ese nombre ya existe. Por qué ocurre: cada nombre de red debe ser único. Cómo comprobarlo: busca tu nombre en `docker network ls`. Arreglo seguro: reutiliza la red existente o elige otro nombre. Nunca borres las redes `bridge`, `host` ni `none`, que pertenecen a Docker.
+
+```bash title="terminal"
+docker network create app-network
+```
+
+```text title="resultado" frame="terminal"
+Error response from daemon: network with name app-network already exists
+```
+
+### El contenedor ya corría en otra red
+
+Lo que pasó: un contenedor en marcha no encuentra a `db` por su nombre. Por qué ocurre: `--network` solo funciona al crear el contenedor y ese contenedor nació en otra red. Cómo comprobarlo: revisa la sección `Containers` de `docker network inspect app-network` y confirma que su nombre no está. Arreglo seguro: úsalo como camino honesto y conecta el contenedor existente sin recrearlo:
+
+```bash title="terminal"
+docker network connect app-network web
+```
+
+`connect` mete a `web` en `app-network` después de su nacimiento. A partir de ahí el nombre `db` sí resuelve para él.
+
+### Cada contenedor está en una red distinta
+
+Lo que pasó: el testigo responde `ping: bad address 'db'`. Por qué ocurre: los nombres solo resuelven dentro de la misma red definida por el usuario y los dos contenedores no la comparten. Cómo comprobarlo: inspecciona la red y confirma que falta uno de los dos nombres en `Containers`. Arreglo seguro: ejecuta el testigo con `--network app-network` o conecta el contenedor que quedó fuera. Ambos deben compartir exactamente la misma red.
+
+## Lo que esta lección demostró
+
+Dos contenedores más una red con nombres que resuelven:
+
+```text
+web (puerto 8080 hacia tu equipo) ---> db (sin puerto publicado)
+       `--> app-network: web alcanza a db por su nombre
+```
+
+La base de datos quedó invisible para tu equipo y visible para la aplicación. Ningún comando de esta lección tocó volúmenes: los datos de perfil siguen donde los dejó la lección anterior.
+
+## Siguiente paso
+
+Continúa con [Dockerfile](./../dockerfile/) para construir tu propia imagen en lugar de usar siempre imágenes ajenas.

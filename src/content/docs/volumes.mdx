@@ -1,0 +1,219 @@
+---
+title: Volúmenes
+description: Qué datos sobreviven a la eliminación de un contenedor, cómo crear volúmenes nombrados y por qué el bind mount no es lo mismo que un volumen.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+En [Eliminar contenedores](./../removing-containers/) aprendiste que `docker rm` borra el contenedor y todo lo que vivía solo dentro de él. Esta lección convierte esa frase en una pérdida concreta. Crearás un archivo visible, lo perderás al recrear el contenedor y luego repetirás la misma historia con un final distinto.
+
+## Una nota que desaparece al recrear el contenedor
+
+Necesitas el contenedor `web` en ejecución, creado en [Ejecutar contenedores](./../running-containers/). Si no existe, créalo:
+
+```bash title="terminal"
+docker run -d --name web -p 8080:80 nginx:1.29
+```
+
+Escribe un archivo dentro del contenedor en marcha:
+
+```bash title="terminal"
+docker exec web sh -c 'echo hola > /usr/share/nginx/html/nota.txt'
+```
+
+`exec` ejecuta una orden dentro del contenedor en marcha. Ya lo usaste en forma interactiva en [Ver y consultar contenedores](./../inspecting-containers/). Aquí lo usas en forma directa: `sh -c` ejecuta el texto entre comillas como orden de la shell.
+
+Comprueba que el archivo existe:
+
+```bash title="terminal"
+docker exec web cat /usr/share/nginx/html/nota.txt
+```
+
+```text title="resultado" frame="terminal"
+hola
+```
+
+Abre `http://localhost:8080/nota.txt` en el navegador. Ves la palabra `hola`. El archivo vive dentro del contenedor y el servidor lo sirve como cualquier página.
+
+Ahora recrea el contenedor, como harías al actualizar o al empezar de cero:
+
+```bash title="terminal"
+docker stop web
+```
+
+```bash title="terminal"
+docker rm web
+```
+
+```bash title="terminal"
+docker run -d --name web -p 8080:80 nginx:1.29
+```
+
+Busca la nota en el contenedor nuevo:
+
+```bash title="terminal"
+docker exec web ls /usr/share/nginx/html/
+```
+
+```text title="resultado" frame="terminal"
+50x.html
+index.html
+```
+
+`nota.txt` ya no está en la lista. El navegador confirma lo mismo en `http://localhost:8080/nota.txt`: el servidor responde que esa página no existe. El contenedor nuevo sirve la página de bienvenida intacta, pero tu archivo se fue con el contenedor anterior.
+
+## La capa escribible muere con el contenedor
+
+Cada contenedor tiene su propia capa escribible. Todo lo que escribe fuera de un volumen queda ahí: la nota, los logs, cualquier archivo subido sin montaje.
+
+Esa capa muere con `docker rm`. Por eso el contenedor nuevo no recuerda nada del anterior, aunque uses el mismo nombre y la misma imagen.
+
+La imagen `nginx:1.29` nunca cambió en este proceso. Sigue disponible como plantilla intacta y por eso el contenedor recreado arranca igual. La pérdida no tocó la imagen. Tocó solo la capa del contenedor eliminado.
+
+Un **volumen** es el lugar donde los datos sí sobreviven. Es almacenamiento gestionado por Docker que vive fuera del contenedor y se monta en una ruta interna. Cuando el contenedor muere, el volumen queda.
+
+## Las fotos de perfil sobreviven en un volumen nombrado
+
+Imagina una aplicación donde cada usuario sube su foto de perfil. Si esa foto cae en la capa escribible, cada recreación del contenedor borra las fotos de todos. Repite la historia anterior con un volumen y observa la diferencia.
+
+Crea un volumen con nombre:
+
+```bash title="terminal"
+docker volume create fotos
+```
+
+Recrea `web` montando ese volumen en la carpeta de fotos:
+
+```bash title="terminal"
+docker stop web
+```
+
+```bash title="terminal"
+docker rm web
+```
+
+```bash title="terminal"
+docker run -d --name web -p 8080:80 -v fotos:/usr/share/nginx/html/fotos nginx:1.29
+```
+
+`-v fotos:/usr/share/nginx/html/fotos` conecta el volumen nombrado con la ruta donde la aplicación guarda las fotos. Lo que se escriba en esa ruta vive en el volumen, no en la capa escribible.
+
+Simula una subida escribiendo una foto en esa carpeta:
+
+```bash title="terminal"
+docker exec web sh -c 'echo foto-de-maria > /usr/share/nginx/html/fotos/maria.jpg'
+```
+
+En una aplicación real ese archivo lo escribiría la subida del formulario. Aquí lo escribes a mano para observar el mismo efecto.
+
+Comprueba que la foto existe:
+
+```bash title="terminal"
+docker exec web cat /usr/share/nginx/html/fotos/maria.jpg
+```
+
+```text title="resultado" frame="terminal"
+foto-de-maria
+```
+
+Abre `http://localhost:8080/fotos/maria.jpg` y el servidor la sirve. Hasta aquí la historia se parece a la de la nota.
+
+Recrea el contenedor con el mismo volumen:
+
+```bash title="terminal"
+docker stop web
+```
+
+```bash title="terminal"
+docker rm web
+```
+
+```bash title="terminal"
+docker run -d --name web -p 8080:80 -v fotos:/usr/share/nginx/html/fotos nginx:1.29
+```
+
+Vuelve a leer la foto:
+
+```bash title="terminal"
+docker exec web cat /usr/share/nginx/html/fotos/maria.jpg
+```
+
+```text title="resultado" frame="terminal"
+foto-de-maria
+```
+
+La foto sigue ahí. `docker rm` eliminó el contenedor pero nunca toca los volúmenes. El volumen `fotos` persiste con independencia de cualquier contenedor hasta que borres el volumen mismo.
+
+Prefiere siempre los volúmenes nombrados: los volúmenes anónimos existen (montar una ruta sin nombre crea uno) pero son difíciles de rastrear.
+
+## Las filas de una base de datos también viven en un volumen
+
+Una base de datos cuenta la misma historia con filas en lugar de fotos. MySQL guarda sus datos bajo la ruta `/var/lib/mysql` dentro del contenedor. Si esa ruta vive en la capa escribible, recrear el contenedor para actualizar la versión borra las tablas.
+
+El patrón es el mismo que usaste con las fotos:
+
+```bash title="terminal"
+docker volume create datos
+```
+
+La forma `-v datos:/var/lib/mysql` monta el volumen `datos` justo donde el motor guarda sus filas. Las filas viven en el volumen y el contenedor queda como pieza reemplazable. El ejemplo completo con imagen, variables y salud del servicio pertenece a la lección de Compose. Aquí importa el patrón: dato que debe sobrevivir va en un volumen desde el primer día.
+
+## Listar, inspeccionar y borrar volúmenes
+
+Lista los volúmenes de tu equipo:
+
+```bash title="terminal"
+docker volume ls
+```
+
+```text title="resultado" frame="terminal"
+DRIVER   VOLUME NAME
+local    datos
+local    fotos
+```
+
+Ves los nombres que creaste y el controlador `local`. Los valores exactos de tu equipo pueden variar en orden, pero los nombres son los mismos que elegiste.
+
+Revisa el detalle de uno:
+
+```bash title="terminal"
+docker volume inspect fotos
+```
+
+```text title="resultado" frame="terminal"
+[
+  {
+    "Name": "fotos",
+    "Driver": "local",
+    "Mountpoint": "/var/lib/docker/volumes/fotos/_data"
+  }
+]
+```
+
+`inspect` muestra el nombre, el controlador y el punto de montaje real en el anfitrión. La ruta exacta depende de tu sistema. No edites ese directorio a mano: gestiónalo con comandos de Docker.
+
+Lee la advertencia antes del próximo comando. Borrar el volumen destruye los datos que protegiste en esta lección y no hay contenedor que recrear para recuperarlos.
+
+<Callout variant="danger" title="Borrar el volumen sí borra los datos">
+`docker volume rm` elimina el almacenamiento persistente junto con todo su contenido. A diferencia de `docker rm`, aquí se pierden las fotos, las filas o lo que guardara el volumen. Ejecútalo solo cuando ya no necesites esos datos.
+</Callout>
+
+```bash title="terminal"
+docker volume rm fotos
+```
+
+## Una carpeta de tu equipo en lugar de un volumen
+
+Un bind mount monta una carpeta de tu equipo en una ruta del contenedor, en lugar de usar un volumen gestionado por Docker. Sirve cuando quieres editar código en vivo desde tu editor y ver el cambio al instante dentro del contenedor. Las lecciones de proyecto con Node.js y Laravel son el lugar donde este montaje tiene sentido, así que esta página no lo practica: quédate con la distinción y usa volúmenes nombrados para datos que deben sobrevivir.
+
+## Lo que esta lección demostró
+
+La nota se perdió porque vivía en la capa escribible. La foto sobrevivió porque vivía en un volumen. La regla ya no es una frase para memorizar. Es lo que acabas de probar dos veces: el contenedor muere con su capa y el volumen sobrevive a los contenedores.
+
+- La imagen `nginx:1.29` no cambia en ningún paso. Es la plantilla intacta.
+- El contenedor `web` y su capa escribible desaparecen con `docker rm`.
+- El volumen `fotos` sobrevive al contenedor y se vuelve a montar en el siguiente.
+
+## Siguiente paso
+
+Continúa con [Redes](./../networks/) para conectar contenedores entre sí por su nombre sin exponer de más.

@@ -1,0 +1,143 @@
+---
+title: Logs
+description: Cómo leer, filtrar, seguir en directo y guardar en un archivo la salida de un contenedor con docker logs.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Algo falla en tu servidor, o quieres saber qué pasó durante la noche. Nadie puede mirar una terminal las 24 horas, así que necesitas dos cosas: revisar lo que ya ocurrió y guardar una copia para analizarla con calma. Para eso sirven los logs.
+
+Los logs son lo que el proceso principal del contenedor (su PID 1) escribió en su salida estándar y en su salida de errores. Son la voz del programa: peticiones atendidas, avisos y errores. No son una auditoría del sistema ni un registro de todo lo que hizo Docker: solo cuentan lo que ese programa decidió contar.
+
+## Qué aprenderás
+
+- Cómo leer lo que el contenedor ya imprimió con `docker logs`.
+- Cómo ver solo las últimas líneas con `--tail` y con fecha con `--timestamps`.
+- Cómo mirar en directo con `--follow` y cómo consultar un periodo con `--since`.
+- Cómo guardar los logs en un archivo de tu máquina para leerlos después.
+- Qué hacer cuando los logs salen vacíos.
+
+## Antes de empezar
+
+Necesitas el contenedor `web` creado en [Ejecutar contenedores](./../running-containers/). Puede estar en ejecución o detenido: Docker conserva los logs de un contenedor detenido hasta que lo eliminas.
+
+## Lo que el contenedor ya contó
+
+```bash title="terminal"
+docker logs web
+```
+
+Docker muestra la salida acumulada del proceso principal. En `nginx`, cada visita a `http://localhost:8080` deja una línea de acceso y cada problema de arranque deja un mensaje de error. Este comando también funciona con el contenedor detenido: detener no borra los logs, solo los deja quietos para su lectura.
+
+```text title="resultado" frame="terminal"
+172.17.0.1 - - [03/Oct/2026:10:15:22 +0000] "GET / HTTP/1.1" 200 615 "-" "Mozilla/5.0"
+172.17.0.1 - - [03/Oct/2026:10:15:24 +0000] "GET /favicon.ico HTTP/1.1" 404 153 "-" "Mozilla/5.0"
+```
+
+Cada línea cuenta una historia pequeña: quién pidió (`172.17.0.1`), qué pidió (`GET /`) y el código de respuesta (`200` éxito, `404` no encontrado).
+
+## Las últimas líneas sin inundar la pantalla
+
+Un servidor ocupado acumula cientos de líneas. Para leer solo el final:
+
+```bash title="terminal"
+docker logs --tail 20 web
+```
+
+`--tail 20` muestra solo las últimas 20 líneas. Es la forma habitual de empezar: lees lo reciente sin que la terminal se llene.
+
+```text title="resultado" frame="terminal"
+172.17.0.1 - - [03/Oct/2026:10:42:01 +0000] "GET / HTTP/1.1" 200 615 "-" "Mozilla/5.0"
+172.17.0.1 - - [03/Oct/2026:10:42:03 +0000] "GET /estilos.css HTTP/1.1" 200 1024 "-" "Mozilla/5.0"
+```
+
+## Cuándo ocurrió cada línea
+
+Por defecto, `nginx` incluye su propia fecha en cada línea de acceso, pero muchos programas imprimen mensajes sin fecha. Para saber cuándo Docker recibió cada línea:
+
+```bash title="terminal"
+docker logs --timestamps --tail 5 web
+```
+
+`--timestamps` antepone a cada línea la fecha y hora en que Docker la capturó. Úsalo cuando la pregunta es "¿a qué hora empezó a fallar?" y el mensaje del programa no trae su propia fecha.
+
+```text title="resultado" frame="terminal"
+2026-10-03T10:42:01.123456789Z 172.17.0.1 - - [03/Oct/2026:10:42:01 +0000] "GET / HTTP/1.1" 200 615 "-" "Mozilla/5.0"
+2026-10-03T10:42:03.234567891Z 172.17.0.1 - - [03/Oct/2026:10:42:03 +0000] "GET /estilos.css HTTP/1.1" 200 1024 "-" "Mozilla/5.0"
+```
+
+## Mirar en directo sin quedarse a vivir ahí
+
+Para ver los mensajes nuevos en el momento en que ocurren:
+
+```bash title="terminal"
+docker logs --follow web
+```
+
+`--follow` (forma corta: `-f`) deja la terminal conectada al flujo de mensajes. Genera una visita en el navegador y verás la línea aparecer. Para salir, pulsa `Ctrl+C`. Eso solo interrumpe el seguimiento: el contenedor sigue en ejecución.
+
+<Callout variant="info" title="Seguir no es guardar">
+`--follow` solo muestra mensajes en pantalla, no conserva nada. Cuando cierras la terminal o detienes el seguimiento, lo que no copiaste se pierde de vista. Si necesitas una prueba de lo ocurrido, guarda los logs en un archivo como explica la sección siguiente.
+</Callout>
+
+## Qué pasó mientras estabas fuera
+
+`--since` responde la pregunta del turno de noche: "¿qué ocurrió en la última hora?".
+
+```bash title="terminal"
+docker logs --since 1h web
+```
+
+Docker muestra solo las líneas capturadas durante la última hora. También acepta fechas concretas, pero `1h` cubre el caso habitual: llegas, preguntas por lo reciente y sigues con el diagnóstico.
+
+## Guardar los logs en un archivo de tu máquina
+
+Aquí está la respuesta a la queja honesta: nadie vigila una terminal todo el día. Guarda una copia y léela cuando quieras.
+
+```bash title="terminal"
+docker logs web > web.log
+```
+
+El signo `>` redirige la salida del comando a un archivo: en vez de mostrarla en pantalla, la escribe en `web.log`, creado en tu directorio actual. Si el archivo ya existía, su contenido se reemplaza.
+
+Ese archivo vive en tu máquina (el host), no dentro del contenedor. Por eso sobrevive a `docker stop`: detén el contenedor con lo aprendido en la lección anterior y el archivo seguirá ahí, legible hasta que tú lo borres.
+
+Para leer la copia, usa:
+
+```bash title="terminal"
+cat web.log
+```
+
+`cat` imprime el archivo completo en pantalla. Sirve para copias pequeñas. Si la copia tiene cientos de líneas, usa `less web.log`: muestra el contenido por páginas para moverte con las flechas y se sale con la tecla `q`.
+
+```text title="resultado" frame="terminal"
+172.17.0.1 - - [03/Oct/2026:10:15:22 +0000] "GET / HTTP/1.1" 200 615 "-" "Mozilla/5.0"
+172.17.0.1 - - [03/Oct/2026:10:15:24 +0000] "GET /favicon.ico HTTP/1.1" 404 153 "-" "Mozilla/5.0"
+```
+
+La prueba observable: después de detener `web`, ejecuta `cat web.log` y verás las mismas líneas. Los logs del contenedor detenido también siguen disponibles con `docker logs web` hasta que elimines el contenedor. La forma con `>` es el camino recomendado para principiantes: no busques los archivos internos de Docker bajo `/var/lib/docker`, porque esa zona interna pertenece a temas avanzados.
+
+## Cuando los logs salen vacíos
+
+Pasa esto: ejecutas `docker logs web` y no aparece nada. Lo que ocurrió: el comando funcionó, pero el programa no escribió nada en su salida. El porqué habitual es uno de dos: el contenedor terminó tan rápido que casi no alcanzó a imprimir, o el programa escribe sus errores en un archivo interno en vez de su salida estándar.
+
+Cómo comprobarlo: mira la fila del contenedor con `docker ps -a` como aprendiste en [Ver y consultar contenedores](./../inspecting-containers/) y lee su código de salida. Un `Exited (1)` segundos después de arrancar señala un fallo inmediato: hay poco que leer porque el proceso murió al instante.
+
+La corrección segura: no borres el contenedor todavía. Conserva la fila de `ps -a` y el código de salida como pistas, revisa la configuración que le pasaste al arrancar y solo elimina cuando ya leíste todo, como explica [Eliminar contenedores](./../removing-containers/).
+
+<Callout variant="tip" title="Lee antes de borrar">
+El orden seguro ante un fallo es estado y después logs, y solo entonces decidir. Eliminar el contenedor con `docker rm` borra sus logs con él, así que leer primero es conservar la única pista disponible.
+</Callout>
+
+## Todo en una mirada
+
+- Lo ya ocurrido: `docker logs web`.
+- Lo reciente sin ruido: `docker logs --tail 20 web`.
+- Con fecha de captura: agrega `--timestamps`.
+- En directo: `docker logs --follow web` (`Ctrl+C` solo cierra el seguimiento).
+- Lo de la última hora: `docker logs --since 1h web`.
+- Para conservar: `docker logs web > web.log` y luego `cat web.log`.
+
+## Siguiente paso
+
+Continúa con [Eliminar contenedores](./../removing-containers/) para borrar el contenedor `web` de forma segura ahora que ya sabes leer y guardar su testimonio.

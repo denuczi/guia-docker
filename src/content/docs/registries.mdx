@@ -1,0 +1,147 @@
+---
+title: Registros de imágenes
+description: Dónde viven las imágenes antes de descargarlas. Docker Hub como registro por defecto, registro frente a repositorio y etiqueta, y el recorrido hasta tu equipo.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+En las lecciones anteriores pediste `nginx:1.29` y la imagen llegó desde internet. El nombre y la etiqueta ya te resultan familiares: aprendiste a leerlos en [Imágenes](./../images/). Lo que aún no se explicó es dónde estaba guardada esa imagen antes de que la pidieras.
+
+Estaba en un **registro**: un servicio que almacena imágenes y las distribuye cuando alguien las solicita. Esta lección responde una sola pregunta: dónde viven las imágenes antes de que `docker pull` las traiga a tu equipo.
+
+## Una tienda de la que traes copias
+
+Piensa en una tienda de aplicaciones: la aplicación original vive en la tienda y tú instalas una copia en tu teléfono. El original sigue allí, disponible para quien lo necesite.
+
+Un registro funciona con la misma idea: guarda las imágenes originales y entrega copias a cada equipo que las pide. La diferencia técnica está en lo que entrega: ni programas instalables ni código fuente, sino plantillas de contenedor listas para ejecutar.
+
+## Docker Hub es el registro público por defecto
+
+Docker Hub es el registro público que Docker usa cuando no indicas otro. Allí vive la imagen `nginx` junto a miles de imágenes más. Docker Hub no es el único registro que existe: hay otros públicos y privados. Pero es el punto de partida porque viene configurado por defecto.
+
+Si abres la página de `nginx` en Docker Hub verás dos señales útiles. Primero, la marca de imagen oficial: indica que el contenido lo mantiene el equipo responsable siguiendo estándares publicados. Segundo, la lista de etiquetas: cada versión disponible aparece como una etiqueta que puedes pedir por su nombre.
+
+Puedes buscar desde el navegador en el [sitio oficial de Docker Hub](https://hub.docker.com), por ejemplo en la [página de nginx](https://hub.docker.com/_/nginx), o desde tu terminal:
+
+```bash title="terminal"
+docker search nginx --limit 5
+```
+
+La opción `--limit 5` recorta el resultado a 5 filas para leerlo con calma.
+Sin esa opción la orden también funciona, pero devuelve hasta 25 filas y la
+tabla se vuelve difícil de recorrer.
+
+```text title="resultado" frame="terminal"
+NAME      DESCRIPTION                  STARS    OFFICIAL
+nginx     Official build of Nginx...   20000+   [OK]
+unit      Official build of NGINX...   200+     [OK]
+ansible   Ansible inside Docker...     100+
+```
+
+Lee el resultado así:
+
+- `NAME` es el repositorio que pedirías con `docker pull`.
+- `OFFICIAL` con `[OK]` es la misma marca oficial de la página web.
+- Los números cambian con el tiempo: sirven de orientación, no de prueba.
+
+Elige uno y tráelo. Con el repositorio oficial basta el nombre:
+
+```bash title="terminal"
+docker pull nginx
+```
+
+Al no indicar etiqueta, Docker pide `latest`, la más reciente. Verás cómo
+descarga cada capa y al final la copia queda en tu equipo, lista para usar.
+Compruébalo con `docker images nginx`: ahora la tabla muestra la etiqueta
+`latest` junto a las que ya tenías.
+
+<Callout variant="tip" title="Elige imágenes con señales de confianza">
+Ante dos imágenes parecidas, prefiere la oficial o la que tenga un mantenedor identificable, documentación clara e historial de actualizaciones. La marca oficial y la página de la imagen son la fuente a consultar: las estrellas acumuladas no equivalen a seguridad.
+</Callout>
+
+## Registro, repositorio y etiqueta no son lo mismo
+
+Estos tres términos se confunden porque siempre aparecen juntos en un comando. La tabla los separa usando el ejemplo que ya conoces:
+
+| Término | Qué es | Ejemplo |
+| --- | --- | --- |
+| Registro | El servicio que almacena y distribuye imágenes. | Docker Hub, el que Docker usa por defecto. |
+| Repositorio | El nombre que identifica una imagen o una familia de imágenes dentro de un registro. | `nginx` |
+| Etiqueta | La marca que señala una versión concreta dentro de un repositorio. | `1.29`, en `nginx:1.29` |
+
+Cuando escribes `nginx:1.29` sin indicar registro, Docker asume Docker Hub, busca el repositorio `nginx` y pide la etiqueta `1.29`.
+
+Compruébalo en tu equipo: esta orden lista las copias locales del
+repositorio `nginx`:
+
+```bash title="terminal"
+docker images nginx
+```
+
+```text title="resultado" frame="terminal"
+REPOSITORY   TAG    IMAGE ID     CREATED      SIZE
+nginx        1.29   e4f5a6b7c8d9   4 weeks ago  192MB
+```
+
+Lee el resultado con la tabla anterior:
+
+- `REPOSITORY` muestra el repositorio: `nginx`.
+- `TAG` muestra la etiqueta: `1.29`.
+- El registro no aparece porque Docker Hub es el valor por defecto.
+
+Si la tabla está vacía, no tienes esa copia en local: tráela con la orden
+de la sección siguiente.
+
+## El recorrido de una imagen hasta tu contenedor
+
+```text
+Docker Hub --pull--> imagen en local --run--> contenedor en marcha
+```
+
+La primera flecha es la descarga: `docker pull` copia la plantilla del registro a tu equipo. No inicia ningún servidor ni abre ningún puerto. Solo deja la base disponible en local.
+
+La segunda flecha es la ejecución: `docker run` crea un contenedor a partir de esa base local y lo pone en marcha. Ese segundo paso lo verás en detalle en la próxima lección.
+
+<Callout variant="info" title="Cada orden tiene su momento">
+Si la imagen ya está en local, `docker run` la usa directamente y solo descarga cuando falta. Tampoco actualiza lo que ya tienes: traer la versión recién publicada es trabajo de `docker pull`. La comparación completa vive en [Imágenes](./../images/).
+</Callout>
+
+## Trae una segunda versión y comprueba que aterrizó en local
+
+Ya tienes `nginx:1.29` de las lecciones anteriores. Pide ahora la versión anterior para ver cómo una segunda copia aterriza junto a la primera:
+
+```bash title="terminal"
+docker pull nginx:1.28
+```
+
+Comprueba el contenido local:
+
+```bash title="terminal"
+docker images
+```
+
+```text title="resultado" frame="terminal"
+REPOSITORY   TAG    IMAGE ID       CREATED      SIZE
+nginx        1.29   a1b2c3d4e5f6   3 weeks ago  188MB
+nginx        1.28   f6e5d4c3b2a1   2 months ago  187MB
+```
+
+Cada fila es una plantilla disponible en tu equipo. El mismo repositorio `nginx` aparece dos veces, una por etiqueta. Nada se ejecutó: solo llegaron copias del registro a tu disco.
+
+## El inicio de sesión existe para el contenido privado
+
+Existe una orden llamada `docker login`. Sirve para identificarte cuando necesitas imágenes privadas o cuando alcanzas los límites de descarga anónima. En esta etapa no la necesitas: las imágenes públicas de práctica se descargan sin cuenta.
+
+## Lo esencial en tres líneas
+
+```text
+Registro --pull--> imagen en local --run--> contenedor
+```
+
+- Las imágenes viven en un registro. `docker pull` trae copias a tu equipo sin ejecutar nada.
+- Registro es el servicio, repositorio es el nombre (`nginx`) y etiqueta es la versión (`1.29`).
+- Docker Hub es el registro por defecto, no el único. Verifica la marca oficial y la página de cada imagen.
+
+## Siguiente paso
+
+Continúa con [Ejecutar contenedores](./../running-containers/), el inicio de Uso básico, para crear un contenedor desde la imagen que ya tienes en local: nombre, puertos y segundo plano paso a paso.

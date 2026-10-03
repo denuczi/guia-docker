@@ -1,0 +1,103 @@
+---
+title: Solución de problemas
+description: Orden fijo de investigación, errores frecuentes y referencia de comandos para diagnosticar antes de borrar.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Ante un fallo, inspecciona en orden fijo antes de aplicar remedios
+destructivos. La mayoría de los problemas caen en los primeros cuatro pasos.
+
+## Qué aprenderás
+
+- El orden de investigación que siempre funciona.
+- Los errores frecuentes y su causa real.
+- La referencia mínima de comandos con su contexto seguro.
+
+## Orden de investigación
+
+1. `docker ps -a` — ¿existe el contenedor y en qué estado está?
+2. Logs — ¿qué dice el proceso?
+3. Proceso — ¿está corriendo lo que debería dentro?
+4. Puerto del contenedor — ¿escucha donde crees?
+5. Publicación `-p` — ¿llega al anfitrión?
+6. Red — ¿resuelve el nombre interno?
+7. Variables de entorno — ¿faltan o están mal?
+8. Volúmenes — ¿monta lo que crees?
+9. Rebuild y caché — ¿corre una imagen vieja?
+10. Plataforma y arquitectura — ¿coinciden host e imagen?
+11. Permisos — ¿puede escribir donde necesita?
+
+```bash title="terminal"
+docker ps -a
+```
+
+```bash title="terminal"
+docker logs web
+```
+
+```bash title="terminal"
+docker inspect web
+```
+
+`ps -a` muestra también detenidos y su código de salida. `logs` revela el
+error del proceso. `inspect` detalla montajes, redes, variables y puertos en un
+solo documento.
+
+## Errores frecuentes
+
+- **Nombre en uso:** hay un contenedor detenido con ese nombre. Inspecciónalo
+  antes de eliminarlo.
+- **Puerto ocupado:** otro programa usa el puerto del anfitrión. Cambia el lado
+  izquierdo de `-p`.
+- **No responde pese a estar Up:** el proceso escucha en `localhost` dentro del
+  contenedor o en otro puerto. Revisa el comando y `EXPOSE` frente a `-p`.
+- **Datos que "desaparecen":** estaban en la capa escribible y el contenedor se
+  recreó. Usa un volumen.
+- **Nombre que no resuelve:** los contenedores no comparten red. Únelos a la
+  misma red definida por el usuario.
+- **Build que no cambia nada:** la caché reutilizó una capa vieja. Reconstruye
+  sin caché solo tras entender qué capa miente.
+
+<Callout variant="info" title="Inspección antes que destrucción">
+Detener, eliminar o podar son el último paso, no el primero. Cada remedio
+destructivo tiene su advertencia en su página: relee la consecuencia antes de
+ejecutarlo.
+</Callout>
+
+## Referencia mínima
+
+```bash title="terminal"
+docker ps
+docker ps -a
+docker stop <container>
+docker start <container>
+docker restart <container>
+docker logs <container>
+docker exec -it <container> sh
+docker rm <container>
+docker images
+docker image inspect <image>
+docker inspect <container>
+docker system df
+docker system prune
+```
+
+Redes y volúmenes en sus secciones:
+
+```bash title="terminal"
+docker network ls
+docker network inspect <network>
+docker network create <network>
+docker network connect <network> <container>
+docker volume ls
+docker volume inspect <volume>
+docker volume rm <volume>
+```
+
+## Glosario mínimo
+
+**Imagen:** plantilla de build. **Contenedor:** instancia en ejecución.
+**Volumen:** persistencia gestionada por Docker. **Red:** conectividad entre
+contenedores. **Registro:** distribución de imágenes. **Dockerfile:**
+instrucciones de build. **Compose:** varios contenedores declarados como sistema.

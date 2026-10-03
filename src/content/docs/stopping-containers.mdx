@@ -1,0 +1,85 @@
+---
+title: Detener, iniciar y reiniciar
+description: Cómo detener, iniciar y reiniciar contenedores, qué estados atraviesan y por qué detener no es borrar.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Un contenedor atraviesa **estados**: creado, en ejecución y detenido. Detener,
+iniciar y reiniciar mueven el contenedor entre esos estados sin eliminarlo.
+Existen porque un servidor se apaga para descansar, se enciende para servir y
+se reinicia para aplicar un cambio: todo sin perder el contenedor.
+
+## Qué aprenderás
+
+- Los tres estados del ciclo de vida y cómo moverte entre ellos.
+- Cómo detener, iniciar y reiniciar con `stop`, `start` y `restart`.
+- Por qué un contenedor detenido conserva su nombre y su filesystem.
+- Qué resultado esperar de `docker ps -a` en cada estado.
+
+## Antes de empezar
+
+Necesitas el contenedor `web` en ejecución, creado en
+[Ejecutar contenedores](./../running-containers/). Verifica su estado con
+`docker ps`, como aprendiste en
+[Ver y consultar contenedores](./../inspecting-containers/).
+
+## Detén el contenedor
+
+```bash title="terminal"
+docker stop web
+```
+
+Docker pide al proceso principal que termine con calma y le da unos segundos
+antes de forzarlo. El contenedor pasa a estado detenido: conserva su nombre,
+su configuración y todo lo que escribió en su propio filesystem.
+
+## Resultado esperado
+
+Comprueba el nuevo estado con la vista completa:
+
+```bash title="terminal"
+docker ps -a
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS                     PORTS     NAMES
+a1b2c3d4e5f6   nginx:1.29   Exited (0) 5 seconds ago             web
+```
+
+El estado `Exited (0)` confirma una salida limpia y la fila sigue ahí: el
+contenedor existe, solo está apagado. Fíjate en que ya no publica puertos
+mientras está detenido.
+
+## Inicia y reinicia
+
+```bash title="terminal"
+docker start web
+```
+
+```bash title="terminal"
+docker restart web
+```
+
+`start` enciende un contenedor detenido con su misma configuración: no crea uno
+nuevo. `restart` es detener y arrancar de nuevo en un solo paso, útil cuando
+cambiaste algo que el proceso lee al inicio. Verifica después de cada comando
+con `docker ps` que el estado volvió a `Up`.
+
+<Callout variant="info" title="Detener no es borrar">
+Un contenedor detenido sigue ocupando espacio y conservando su nombre. Si
+`docker run --name web` falla diciendo que el nombre ya existe, hay un
+contenedor detenido con ese nombre: inspecciónalo con `docker ps -a` antes de
+eliminarlo.
+</Callout>
+
+## Error común
+
+Reiniciar como primer remedio ante cualquier fallo sin mirar el estado ni los
+logs. Reiniciar borra la evidencia del momento: primero consulta con
+`docker ps -a` y lee los logs, y solo después decide si reiniciar tiene sentido.
+
+## Siguiente paso
+
+Continúa con [Logs](./../container-logs/) para leer lo que el proceso del
+contenedor cuenta sobre su propia salud.

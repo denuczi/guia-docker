@@ -1,0 +1,279 @@
+---
+title: Ejecutar contenedores
+description: "Domina docker run: segundo plano, nombres, puertos, limpieza con --rm, modo interactivo y lectura de errores comunes."
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Ya ejecutaste este comando una vez y funcionó. Ahora vas a aprender a dirigirlo. Cada opción responde una pregunta: dónde corre el servidor, cómo se llama, cómo llegas a él desde el navegador y qué queda cuando termina.
+
+```bash title="terminal"
+docker run -d --name web -p 8080:80 nginx:1.29
+```
+
+`docker run` crea un contenedor a partir de una imagen y lo pone en marcha en un solo paso. Por eso después de ejecutarlo ya puedes abrir el navegador. Crear sin arrancar y volver a arrancar algo detenido pertenecen a otras lecciones. Esta lección trata del arranque.
+
+<Callout variant="info" title="Crear y arrancar a la vez">
+Si vienes de [Tu primer contenedor](./../examples/first-container/), ya viste este efecto: una sola orden prepara el espacio aislado y lo enciende. Aquí repites ese gesto con intención, opción por opción.
+</Callout>
+
+## Qué aprenderás
+
+- El orden del comando: opciones primero, imagen al final.
+- La diferencia entre segundo plano (`-d`) y terminal ocupada.
+- Cómo nombrar contenedores y resolver choques de nombres.
+- Cómo elegir el puerto de tu equipo y qué hacer si está ocupado.
+- Cómo pedir limpieza automática con `--rm` y conversar con `-it`.
+- Cómo leer los tres errores más comunes sin adivinar.
+
+## Antes de empezar
+
+Necesitas Docker en ejecución ([macOS](./../install-macos/), [Windows](./../install-windows/) o [Linux](./../install-linux/)). Usarás la imagen `nginx:1.29` de [Registros de imágenes](./../registries/): si no está en tu equipo, `docker run` la descarga solo la primera vez.
+
+El contenedor `web` te acompaña hasta el final de esta lección. Si lo eliminaste al terminar la práctica anterior, vuelve a crearlo con el comando inicial. Si existe pero está detenido, enciéndelo con `docker start web`. Decide con la vista completa, que muestra también los detenidos:
+
+```bash title="terminal"
+docker ps -a
+```
+
+## El orden del comando: las opciones van antes de la imagen
+
+Lee el comando de izquierda a derecha en tres partes: verbo, ajustes y plantilla.
+
+```bash title="terminal"
+docker run -d --name web -p 8080:80 nginx:1.29
+```
+
+`docker run` es el verbo. Todo lo que sigue hasta la imagen son ajustes: segundo plano, nombre y puerto. `nginx:1.29` cierra el comando porque es la plantilla que Docker debe poner en marcha. El orden entre los ajustes no importa. La posición de la imagen sí.
+
+Lo que escribas después de la imagen ya no es un ajuste de Docker. Es la orden que recibe el programa dentro del contenedor. Lo verás en la sección interactiva con `sh`. Por ahora quédate con la regla: la imagen cierra los ajustes.
+
+Comprueba la plantilla que ya tienes disponible:
+
+```bash title="terminal"
+docker images
+```
+
+Si `nginx:1.29` aparece en la lista, las próximas ejecuciones arrancan de inmediato. Si aún no la descargaste, la primera ejecución muestra unas líneas de descarga antes del arranque. Esa descarga ocurre una sola vez.
+
+## Servidor en segundo plano o terminal ocupada
+
+La opción `-d` ejecuta en segundo plano: el contenedor sigue corriendo y tu terminal queda libre al instante. Ya lo comprobaste con `web`: después del comando recuperas el prompt y `docker ps` muestra el estado `Up`.
+
+Sin `-d`, la terminal queda ocupada mostrando los mensajes del servidor. Pruébalo con otro nombre y otro puerto para no chocar con `web`:
+
+```bash title="terminal"
+docker run --name prueba-fg -p 8090:80 nginx:1.29
+```
+
+Verás mensajes de arranque de `nginx` y el prompt no vuelve. La terminal está ocupada porque sigue conectada al servidor. Abre `http://localhost:8090` en el navegador: la página responde igual que con `web`.
+
+Para recuperar la terminal, pulsa `Ctrl+C`. Eso detiene el servidor y, como no usaste `--rm`, el contenedor queda detenido y conservado. `docker ps` ya no lo lista, porque solo muestra los que están en marcha. Búscalo con la vista completa:
+
+```bash title="terminal"
+docker ps -a
+```
+
+Busca la fila `prueba-fg`. Verás algo parecido a esto, con tu propio identificador:
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS                   PORTS     NAMES
+b7c8d9e0f1a2   nginx:1.29   Exited (0) 3 seconds ago             prueba-fg
+```
+
+El estado `Exited` confirma que se detuvo y la fila sigue ahí: existe, solo está apagado. Esa diferencia entre `ps` y `ps -a` es la base de todo diagnóstico y la practicarás en la próxima lección.
+
+<Callout variant="warning" title="Ctrl+C detiene ese servidor">
+Pulsar `Ctrl+C` en la terminal ocupada detiene el servidor `prueba-fg`. No rompe Docker y la imagen sigue intacta. El contenedor queda detenido y lo gestionarás en las lecciones de ciclo de vida. Déjalo así por ahora.
+</Callout>
+
+## Un nombre que puedas recordar
+
+`--name web` asigna un nombre legible. Sin `--name`, Docker genera un nombre aleatorio de dos palabras. Pruébalo para verlo con tus propios ojos:
+
+```bash title="terminal"
+docker run -d -p 8082:80 nginx:1.29
+```
+
+```bash title="terminal"
+docker ps
+```
+
+Tu fila se parece a esta, con otro identificador y otro nombre aleatorio:
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS         PORTS                  NAMES
+c3d4e5f6a7b8   nginx:1.29   Up 5 seconds   0.0.0.0:8082->80/tcp   brave_curie
+```
+
+La columna `NAMES` muestra el nombre generado. Funciona igual, pero cada orden posterior exige escribir ese nombre. Por eso los contenedores de práctica se nombran siempre.
+
+<Callout variant="tip" title="Nombres explícitos">
+Sin `--name`, los comandos posteriores (`ps`, `logs`, `stop`, `rm`) se vuelven difíciles de leer. Nombra siempre los contenedores de práctica.
+</Callout>
+
+Los nombres son únicos por equipo. Si repites `--name web` mientras existe un `web`, aunque esté detenido, el comando falla con un mensaje parecido a este:
+
+```text title="resultado" frame="terminal"
+The container name "/web" is already in use by container "a1b2c3d4e5f6".
+```
+
+Detener no libera el nombre. Solo eliminarlo lo libera. Cuando veas este mensaje, lista también los detenidos para confirmar el origen:
+
+```bash title="terminal"
+docker ps -a
+```
+
+Si la fila `web` está ahí, ese es el choque. La solución segura es elegir otro nombre, por ejemplo `web2`, o volver a encender el existente con `docker start web`. La eliminación completa, con sus cuidados, llega en [Eliminar contenedores](./../removing-containers/). Anota el nombre aleatorio de tu prueba: lo detenerás en [Detener, iniciar y reiniciar](./../stopping-containers/).
+
+## El puerto de tu equipo lo eliges tú
+
+`-p 8080:80` publica un puerto con el formato `TU_EQUIPO:CONTENEDOR`. El lado derecho es fijo: lo decide la imagen (`nginx` escucha en el `80` interno). El lado izquierdo es libre: es un puerto de tu equipo y puedes elegir cualquiera que esté libre.
+
+Abre `http://localhost:8080`: ves la bienvenida de `nginx` porque el `8080` de tu equipo conduce al `80` del contenedor. La columna `PORTS` de `docker ps` lo confirma con `0.0.0.0:8080->80/tcp`. La flecha indica la dirección: de tu equipo hacia el interior.
+
+Como el lado izquierdo lo eliges tú, los equipos suelen usar puertos memorables para practicar. El `3000` es un clásico del desarrollo web local. Pruébalo con otro nombre:
+
+```bash title="terminal"
+docker run -d --name web-3000 -p 3000:80 nginx:1.29
+```
+
+Abre `http://localhost:3000`. Misma página, otra puerta. El contenedor sigue escuchando en su `80` interno. Solo cambió tu punto de entrada.
+
+Si el puerto de tu equipo ya está ocupado, la publicación falla y el contenedor no arranca. Verás un mensaje con `port is already allocated` o el navegador mostrará otra aplicación. El diagnóstico es mirar la columna `PORTS`:
+
+```bash title="terminal"
+docker ps
+```
+
+Si otra fila usa ese puerto, ese es el conflicto. La solución segura es elegir otro puerto libre de tu equipo con otro nombre, por ejemplo `-p 8081:80` con `--name web2`. No detengas programas que no reconoces para liberar un puerto. Si el conflicto viene de Docker, lo verás en `docker ps`. Si viene de fuera de Docker, cambiar de puerto sigue siendo la salida segura.
+
+<Callout variant="warning" title="Cambia de puerto, no detengas a ciegas">
+Elegir otro puerto libre siempre es seguro. Detener un programa desconocido solo porque ocupa `8080` puede interrumpir otra aplicación. Comprueba primero con `docker ps` si el conflicto viene de Docker.
+</Callout>
+
+## Contenedores de un solo uso
+
+Cada prueba deja un contenedor que alguien deberá detener y eliminar. La opción `--rm` evita esa acumulación: al detenerse, el contenedor se borra solo. Pruébalo en primer plano para ver el ciclo completo:
+
+```bash title="terminal"
+docker run --rm --name temporal -p 8083:80 nginx:1.29
+```
+
+La terminal queda ocupada, como ya sabes. Pulsa `Ctrl+C` y verifica con la vista completa:
+
+```bash title="terminal"
+docker ps -a
+```
+
+La fila `temporal` no aparece. Se detuvo y se borró en el mismo gesto. Ahora confirma lo que sobrevivió:
+
+```bash title="terminal"
+docker images
+```
+
+Verás una salida parecida a esta, con valores propios de tu equipo:
+
+```text title="resultado" frame="terminal"
+REPOSITORY   TAG    IMAGE ID       CREATED      SIZE
+nginx        1.29   a1b2c3d4e5f6   3 weeks ago  188MB
+```
+
+`nginx:1.29` sigue disponible para la próxima práctica. Esa es la regla exacta: `--rm` borra el contenedor al detenerse, nunca la imagen. Tampoco borra los almacenamientos persistentes conectados al contenedor. Esos viven aparte y son tema de [Volúmenes](./../volumes/).
+
+<Callout variant="danger" title="Lo efímero se pierde con --rm">
+Todo lo que el programa guardó solo dentro del contenedor desaparece con él y no se puede recuperar. Usa `--rm` para pruebas que no necesitan conservar nada. Si los datos deben sobrevivir, necesitan un volumen, no un contenedor desechable.
+</Callout>
+
+## Escribir dentro del contenedor
+
+Las opciones `-it` convierten la terminal en un lugar donde puedes escribir. `-i` mantiene la entrada abierta para que el contenedor te escuche y `-t` presenta una terminal ordenada, con prompt y formato. Se usan junto a la orden que quieres ejecutar dentro, y esa orden va después de la imagen:
+
+```bash title="terminal"
+docker run -it --rm nginx:1.29 sh
+```
+
+Recuerda la regla del orden: `sh` va después de `nginx:1.29` porque es la orden para el programa del contenedor, no un ajuste de Docker. Verás que el prompt cambia: estás dentro. Prueba `ls` para ver los archivos de `nginx` y sal con `exit`.
+
+Al salir de esa shell, ese contenedor se detiene. Gracias a `--rm`, además se borra y `docker ps -a` no muestra ninguna fila nueva. Sin `--rm`, quedaría detenido como le pasó a `prueba-fg`.
+
+Úsalo para explorar o revisar archivos dentro del contenedor. No lo necesitas para un servidor como `nginx`, que trabaja solo sin que escribas nada.
+
+Entrar a un contenedor que ya está en marcha, como `web`, es otro gesto con otro comando, `docker exec -it`. Lo practicarás en [Ver y consultar contenedores](./../inspecting-containers/).
+
+## La segunda vez no descarga nada
+
+Compara tu primera ejecución con las siguientes. La primera mostró líneas de descarga porque la plantilla no estaba en tu equipo. Cada ejecución posterior con la misma imagen arranca de inmediato, sin descargar. Pruébalo una vez más para observar la diferencia:
+
+```bash title="terminal"
+docker run -d --name web-b -p 8084:80 nginx:1.29
+```
+
+Esta vez no hay líneas de descarga. Docker responde directamente con el identificador del contenedor y `docker ps` muestra la fila en estado `Up`. La prueba es doble: la ausencia de esas líneas y la presencia previa de la imagen en `docker images`. La plantilla se reutiliza. Solo se crea y se arranca algo nuevo.
+
+## Cuando algo no sale como esperas
+
+Tres errores concentran casi todos los tropiezos de esta lección. Cada uno incluye qué pasó, por qué ocurre, cómo comprobarlo y la solución segura.
+
+### El puerto ya está ocupado
+
+Qué pasó: el comando termina con un mensaje parecido a `Bind for 0.0.0.0:8080 failed: port is already allocated`, o el navegador muestra una página que no es la de `nginx`.
+
+Por qué ocurre: el puerto de tu equipo ya lo usa otro programa u otro contenedor. El lado izquierdo de `-p` debe estar libre.
+
+Cómo comprobarlo: busca el puerto en la columna `PORTS` con `docker ps`. Si otra fila lo usa, el conflicto viene de Docker. Si ninguna fila lo usa, viene de un programa fuera de Docker.
+
+Solución segura: usa otro puerto libre de tu equipo con otro nombre:
+
+```bash title="terminal"
+docker run -d --name web2 -p 8081:80 nginx:1.29
+```
+
+Después abre `http://localhost:8081`. Este es el mismo remedio de [Tu primer contenedor](./../examples/first-container/). No detengas programas desconocidos para liberar el puerto.
+
+### El nombre ya está en uso
+
+Qué pasó: el comando termina con un mensaje parecido a este:
+
+```text title="resultado" frame="terminal"
+The container name "/web" is already in use by container "a1b2c3d4e5f6".
+```
+
+Por qué ocurre: ya existe un contenedor llamado `web`, aunque esté detenido. Los detenidos siguen ocupando su nombre.
+
+Cómo comprobarlo: lista también los detenidos con `docker ps -a`. Si ves `web` con estado `Up`, está en marcha. Si lo ves con `Exited`, está detenido pero sigue reservando el nombre. `docker ps` solo muestra los que están en marcha, por eso el choque sorprende.
+
+Solución segura: si es tu práctica anterior, vuelve a encenderla con `docker start web`. Si quieres una copia nueva, elige otro nombre. Solo elimina lo que ya inspeccionaste, siguiendo [Eliminar contenedores](./../removing-containers/).
+
+### El nombre de la imagen tiene un error
+
+Qué pasó: un pequeño error de escritura, por ejemplo `ngnix` en lugar de `nginx`, produce una salida parecida a esta:
+
+```bash title="terminal"
+docker run -d --name prueba-ng -p 8085:80 ngnix:1.29
+```
+
+```text title="resultado" frame="terminal"
+Unable to find image 'ngnix:1.29' locally
+Error response from daemon: pull access denied for ngnix, repository does not exist
+```
+
+Por qué ocurre: la imagen no está en tu equipo, así que Docker intenta descargarla del registro. Como ese nombre no existe, la descarga falla. Lee el mensaje por partes: la primera línea dice que la buscó en local sin éxito. La segunda dice que el registro no conoce ese nombre.
+
+Cómo comprobarlo: `docker images` no muestra `ngnix`, pero sí `nginx`. El error nombra la imagen que no encontró. La pista siempre está en tu comando, no en Docker.
+
+Solución segura: corrige el nombre y repite. No se creó ningún contenedor, así que no hay nada que limpiar. `docker ps -a` no muestra ninguna fila nueva.
+
+## Lo esencial en cinco líneas
+
+- `docker run` crea y arranca en un solo paso. La imagen cierra el comando y lo que va después de ella es orden para el contenedor.
+- `-d` libera la terminal y el servidor sigue corriendo. Sin `-d`, `Ctrl+C` lo detiene y el contenedor queda detenido.
+- `--name` identifica. Cada nombre es único en tu equipo, incluso cuando el contenedor está detenido.
+- `-p` publica con el formato `TU_EQUIPO:CONTENEDOR`. El lado de tu equipo lo eliges: `8080`, `8081` o `3000` llevan al mismo `80` interno.
+- `--rm` borra el contenedor al detenerse e `-it` abre una shell para escribir dentro. La imagen sobrevive siempre.
+
+Detener, volver a arrancar y eliminar tienen su propio recorrido. Por ahora basta esta regla: inspecciona con `docker ps -a` antes de borrar nada.
+
+## Siguiente paso
+
+Continúa con [Ver y consultar contenedores](./../inspecting-containers/) para listar activos y detenidos, leer el estado, los puertos y el código de salida, inspeccionar la configuración completa y entrar al contenedor `web` en marcha.

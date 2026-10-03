@@ -1,0 +1,178 @@
+---
+title: Eliminar contenedores
+description: Cómo eliminar contenedores detenidos de forma segura, qué datos se pierden y por qué la imagen sobrevive.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Eliminar un contenedor lo borra de la lista de Docker de forma permanente. Su nombre queda libre y todo lo que vivía solo dentro del contenedor se pierde.
+
+Por eso esta lección no empieza con la eliminación. Sigue un ritual fijo: mirar, detener, eliminar y verificar. Aplícalo en ese orden cada vez que borres.
+
+## Antes de empezar
+
+Necesitas el contenedor `web` de las lecciones anteriores. Lee sus logs antes de borrar, como aprendiste en [Logs](./../container-logs/). Si todavía no guardaste una copia, hazlo ahora con la redirección a archivo que explica esa lección. Después de eliminar, los logs desaparecen con el contenedor.
+
+Detener ya lo practicaste en [Detener, iniciar y reiniciar](./../stopping-containers/). Aquí solo lo usas como paso previo, sin repetir su explicación.
+
+## Mira qué contenedores existen
+
+Empieza con la lista completa, que muestra los que están en ejecución y los detenidos:
+
+```bash title="terminal"
+docker ps -a
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS                   NAMES
+a1b2c3d4e5f6   nginx:1.29   Up 2 hours               web
+b7c8d9e0f1a2   nginx:1.29   Exited (0) 2 days ago    prueba-vieja
+```
+
+La columna `NAMES` identifica cada contenedor. Usa el nombre exacto, `web`, en los comandos siguientes. No adivines a partir del `ID`: dos contenedores pueden usar la misma imagen y solo el nombre dice cuál es cuál.
+
+La columna `STATUS` dice si sigue en ejecución o si ya se detuvo. `Up` significa en ejecución. `Exited` con un código entre paréntesis significa detenido: `0` indica salida limpia y un número distinto de cero indica fallo. Para leer esos códigos en profundidad, vuelve a [Ver y consultar contenedores](./../inspecting-containers/).
+
+## Detén el contenedor si está en ejecución
+
+Si `web` aparece como `Up`, deténlo primero:
+
+```bash title="terminal"
+docker stop web
+```
+
+`stop` pide al proceso que termine y deja el contenedor detenido con sus datos intactos, sin borrarlo. El recorrido completo está en [Detener, iniciar y reiniciar](./../stopping-containers/).
+
+Confirma en dos vistas. Primero, los que están en ejecución:
+
+```bash title="terminal"
+docker ps
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE   STATUS   NAMES
+```
+
+`web` ya no aparece entre los que están en ejecución. La lista vacía confirma que nada sigue corriendo con ese nombre.
+
+Después, la lista completa:
+
+```bash title="terminal"
+docker ps -a
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS                   NAMES
+a1b2c3d4e5f6   nginx:1.29   Exited (0) 5 seconds ago   web
+b7c8d9e0f1a2   nginx:1.29   Exited (0) 2 days ago      prueba-vieja
+```
+
+`web` sigue en la lista, ahora detenido. Solo un contenedor detenido se puede eliminar.
+
+## Elimina el contenedor cuando tengas certeza
+
+Elimina solo cuando el nombre en pantalla coincide con el que quieres borrar y su estado es detenido. Lee la advertencia antes del comando: ejecutarlo no tiene vuelta atrás.
+
+<Callout variant="danger" title="Eliminar destruye los datos del contenedor">
+Este comando elimina el contenedor de forma permanente. Destruye todo lo que el contenedor escribió en su propia capa escribible, incluidos sus logs, y esos datos no pueden recuperarse. Verifica el nombre y el estado detenido antes de ejecutarlo.
+</Callout>
+
+```bash title="terminal"
+docker rm web
+```
+
+Desaparece con el contenedor:
+
+- El contenedor como objeto. Su nombre `web` queda libre para un uso futuro.
+- Su capa escribible. Todo lo que el proceso escribió en su propio filesystem se pierde.
+- Sus logs. Docker los conserva mientras el contenedor existe, incluso detenido, y los borra con él. Por eso [Logs](./../container-logs/) pide guardarlos en un archivo antes de llegar aquí.
+
+Sobrevive a la eliminación:
+
+- La imagen `nginx:1.29`. Es la plantilla intacta y sirve para crear otro contenedor igual.
+- Los volúmenes y los archivos montados desde tu máquina. Viven fuera del contenedor, así que `rm` no los toca.
+- Las redes. `rm` no elimina ninguna red, solo desconecta el contenedor al borrarlo.
+- Los demás contenedores. `prueba-vieja` y cualquier otro siguen exactamente igual.
+
+## Comprueba que el contenedor desapareció y la imagen sigue
+
+Verifica la lista completa:
+
+```bash title="terminal"
+docker ps -a
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS                  NAMES
+b7c8d9e0f1a2   nginx:1.29   Exited (0) 2 days ago   prueba-vieja
+```
+
+Ninguna fila se llama `web`. El contenedor se fue y `prueba-vieja` sigue ahí, prueba de que solo borraste lo que nombraste.
+
+Verifica la plantilla:
+
+```bash title="terminal"
+docker images
+```
+
+```text title="resultado" frame="terminal"
+REPOSITORY   TAG    IMAGE ID       CREATED      SIZE
+nginx        1.29   a1b2c3d4e5f6   3 weeks ago  188MB
+```
+
+`nginx:1.29` sigue disponible. Esa es la diferencia observable: el contenedor era una instancia y la imagen es la plantilla que sobrevive.
+
+## Errores frecuentes y cómo resolverlos
+
+### Intentar eliminar un contenedor en ejecución
+
+Lo que pasó: ejecutas `docker rm web` con `web` en estado `Up` y el demonio se niega.
+
+```text title="resultado" frame="terminal"
+Error response from daemon: You cannot remove a running container a1b2c3d4e5f6. Stop the container before attempting removal or force remove
+```
+
+Por qué ocurre: `rm` solo acepta contenedores detenidos. Así te obliga a confirmar el estado antes de destruir datos.
+
+Cómo comprobarlo: ejecuta `docker ps` y busca `web` con estado `Up`.
+
+Corrección segura: detén primero, verifica con `docker ps -a` que pasó a `Exited` y recién entonces repite `docker rm web`.
+
+`docker rm -f` detiene y elimina de golpe, pero te salta la verificación y por eso es un mal hábito mientras aprendes.
+
+### Nombre con error o contenedor inexistente
+
+Lo que pasó: Docker responde que no existe ningún contenedor con ese nombre.
+
+```text title="resultado" frame="terminal"
+Error response from daemon: No such container: weeb
+```
+
+Por qué ocurre: hay un error de escritura en el nombre o el contenedor ya se eliminó antes.
+
+Cómo comprobarlo: ejecuta `docker ps -a` y lee la columna `NAMES` letra por letra.
+
+Corrección segura: repite el comando con el nombre exacto que muestra la lista. Si la lista ya no contiene `web`, no hay nada que borrar: el paso ya está hecho.
+
+### Querer borrar la imagen mientras un contenedor la usa
+
+Lo que pasó: intentas borrar la imagen `nginx:1.29` y Docker responde con un conflicto porque un contenedor la referencia.
+
+Por qué ocurre: la imagen es la plantilla compartida. Mientras exista un contenedor creado desde ella, aunque esté detenido, Docker protege la imagen para no dejar esa referencia rota.
+
+Cómo comprobarlo: ejecuta `docker ps -a` y busca filas que usen `nginx:1.29` en la columna `IMAGE`, incluso con estado `Exited`.
+
+Corrección segura: en esta lección no toques la imagen. Borrar imágenes y decidir qué espacio liberar pertenece a [Limpieza](./../cleanup/). Aquí basta con saber que el contenedor y la imagen tienen ciclos distintos.
+
+Nunca uses comandos de limpieza general en esta página. La limpieza de lo no usado pertenece a [Limpieza](./../cleanup/).
+
+## El ritual completo en una mirada
+
+- Mirar: `docker ps -a` muestra lo que existe. Identifica por `NAMES`.
+- Detener: `docker stop web` apaga sin borrar. Verifica con `docker ps` y `docker ps -a`.
+- Eliminar: `docker rm web` borra el contenedor detenido y sus logs. La imagen sobrevive.
+- Verificar: `docker ps -a` ya no lista `web` y `docker images` aún muestra `nginx:1.29`.
+
+## Siguiente paso
+
+Continúa con [Solución de problemas](./../troubleshooting/) para investigar en orden fijo, estado y logs primero, antes de cualquier remedio destructivo.

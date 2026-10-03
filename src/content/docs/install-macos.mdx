@@ -1,0 +1,102 @@
+---
+title: Instalar Docker en macOS
+description: Descarga Docker Desktop para tu chip (Apple silicon o Intel), instálalo en Aplicaciones y verifica que el motor responde.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+**Docker Desktop** es la forma recomendada de usar Docker en macOS. Incluye el
+motor (el demonio que ejecuta los contenedores), la terminal `docker`, Compose
+y una aplicación para iniciar y detener el servicio. Sin el motor en ejecución,
+ningún comando `docker` funciona.
+
+## Qué aprenderás
+
+- Qué versión de macOS y cuánta memoria necesitas antes de instalar.
+- Cómo elegir el instalador correcto según tu chip: Apple silicon o Intel.
+- Cómo instalar la aplicación en `Aplicaciones` y aceptar los términos.
+- Cómo verificar que el motor responde y ejecuta contenedores.
+
+## Requisitos
+
+- Una versión de macOS soportada: la actual y las dos anteriores.
+- Al menos 4 GB de memoria RAM.
+- Permiso para instalar aplicaciones en tu equipo.
+- Conexión a internet para descargar el instalador.
+
+## Pasos mínimos
+
+### 1. Descarga el instalador de tu chip
+
+Descarga Docker Desktop para Mac desde la página oficial de Docker. Elige el
+archivo `.dmg` según tu procesador: [Docker Desktop para Mac con Apple silicon](https://desktop.docker.com/mac/main/arm64/Docker.dmg?utm_source=docker&utm_medium=webreferral&utm_campaign=docs-driven-download-mac-arm64)
+o [Docker Desktop para Mac con Intel](https://desktop.docker.com/mac/main/amd64/Docker.dmg?utm_source=docker&utm_medium=webreferral&utm_campaign=docs-driven-download-mac-amd64).
+Si no sabes cuál
+tienes, abre el menú Apple y luego Acerca de este Mac: ahí aparece el chip.
+
+Descargar el instalador equivocado es el fallo más frecuente, así que verifica
+este dato antes de continuar.
+
+### 2. Instala en Aplicaciones
+
+Abre el archivo `.dmg` descargado y arrastra `Docker.app` a la carpeta
+`Aplicaciones`. No ejecutes la aplicación desde el disco montado: debe quedar
+copiada en `Aplicaciones` para funcionar de forma estable.
+
+### 3. Inicia la aplicación y acepta los términos
+
+Abre Docker Desktop desde `Aplicaciones`, acepta los términos de suscripción
+cuando aparezcan y espera a que el motor arranque. La aplicación muestra cuándo
+el servicio está en ejecución; hasta entonces, los comandos `docker` no
+responden.
+
+<Callout variant="info" title="Términos de suscripción">
+Docker Desktop es gratuito para uso personal, pequeñas empresas y educación; otros usos requieren una suscripción de pago.
+</Callout>
+
+## Verificación
+
+Comprueba que el cliente y el servidor responden:
+
+```bash title="terminal"
+docker version
+```
+
+Debes ver las secciones del cliente y del servidor, con versiones del motor en
+ambas. Los números exactos varían según la versión instalada:
+
+```text title="resultado" frame="terminal"
+Client: Docker Engine - Community
+ Version: 28.0.0
+Server: Docker Engine - Community
+ Engine:
+  Version: 28.0.0
+```
+
+Si el servidor no aparece, el motor de Docker no está en ejecución: abre Docker Desktop
+y espera a que el servicio arranque.
+
+Luego ejecuta el contenedor de prueba:
+
+```bash title="terminal"
+docker run hello-world
+```
+
+El resultado confirma que el motor descarga la imagen de prueba y la ejecuta:
+
+```text title="resultado" frame="terminal"
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+```
+
+## Error común
+
+Descargar el `.dmg` de la arquitectura equivocada (Intel en un Mac con Apple
+silicon, o al revés). El instalador falla o se comporta de forma extraña.
+Vuelve al paso 1, confirma tu chip en Acerca de este Mac y descarga el archivo
+correspondiente.
+
+## Siguiente paso
+
+Docker ya está instalado y verificado. Continúa con [Qué es Docker](./../what-is-docker/)
+para entender qué es el motor que acabas de instalar.

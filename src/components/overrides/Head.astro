@@ -1,0 +1,26 @@
+---
+// Head override: Starlight's default head tags plus client-side routing
+// (registered via `components.Head` in astro.config.mjs; supported by the
+// installed Starlight 0.42.5 per its ComponentUserConfig schema).
+//
+// The default implementation (installed
+// `@astrojs/starlight/dist/components/Head.astro`) renders Starlight's
+// route `head` entries (`<title>`, meta, Pagefind, theme init). This file
+// reproduces that line-for-line and adds Astro 7.3's `<ClientRouter />`
+// (installed `astro/components/ClientRouter.astro`, imported from the
+// `astro:transitions` virtual module served by Astro's own Vite plugin), so
+// page changes swap content client-side instead of full-reloading.
+//
+// Theme safety: the theme dataset/persistence lives on `documentElement`
+// and in localStorage, neither of which ClientRouter replaces, so the
+// persisted theme survives transitions with no flash. The toggle and copy
+// scripts re-wire on `astro:after-swap`. Reduced motion is honored by the
+// `::view-transition` guard in starlight.css alongside the existing global
+// reduced-motion reset.
+import { ClientRouter } from 'astro:transitions';
+
+const { head } = Astro.locals.starlightRoute;
+---
+
+{head.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}
+<ClientRouter />

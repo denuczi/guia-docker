@@ -1,0 +1,99 @@
+---
+// Breadcrumbs: minimal page-level trail per DESIGN.md (Breadcrumbs section).
+//
+// Starlight 0.42 renders no breadcrumb trail by default, and the foundation
+// keeps the Starlight shell untouched (no custom-shell rebuild), so the trail
+// ships as a page-level component placed first in MDX source order (DESIGN.md
+// article header order: Breadcrumb, then H1, then intro). Note: Starlight
+// renders the frontmatter H1 above the MDX body in the DOM, so the trail
+// sits visually below the H1; moving it above would require a PageTitle
+// shell override, rejected as complexity beyond this fix scope.
+//
+// Accessibility: `nav` with a translated label, ordered list, ancestors as
+// links (or plain spans for group labels with no route), current page as a
+// non-link `span` with `aria-current="page"` plus stronger weight. Position
+// is therefore structural, never color alone (DESIGN.md rule 6).
+// Styling is token-only: muted tertiary ancestors, stronger current page,
+// monospace 13px caption scale, spacing scale for gaps.
+export interface BreadcrumbItem {
+	label: string;
+	href?: string;
+}
+
+export interface Props {
+	items: BreadcrumbItem[];
+}
+
+const { items } = Astro.props;
+const lastIndex = items.length - 1;
+---
+
+<nav aria-label="Ruta de navegación" class="breadcrumbs">
+	<ol>
+		{
+			items.map((item, index) => (
+				<li>
+					{index === lastIndex ? (
+						<span aria-current="page" class="breadcrumbs-current">
+							{item.label}
+						</span>
+					) : item.href ? (
+						<a href={item.href}>{item.label}</a>
+					) : (
+						<span>{item.label}</span>
+					)}
+					{index < lastIndex && (
+						<span aria-hidden="true" class="breadcrumbs-separator">
+							→
+						</span>
+					)}
+				</li>
+			))
+		}
+	</ol>
+</nav>
+
+<style>
+	.breadcrumbs {
+		margin: 0 0 var(--space-16);
+		font-family: var(--font-mono);
+		font-size: var(--text-caption);
+		line-height: var(--leading-caption);
+		color: var(--color-text-muted);
+	}
+
+	.breadcrumbs ol {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-8);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.breadcrumbs li {
+		display: flex;
+		align-items: center;
+		gap: var(--space-8);
+	}
+
+	.breadcrumbs a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.breadcrumbs a:hover {
+		color: var(--color-text);
+		text-decoration: underline;
+	}
+
+	.breadcrumbs-current {
+		color: var(--color-text);
+		font-weight: var(--weight-heading-sm);
+	}
+
+	.breadcrumbs-separator {
+		color: var(--color-text-muted);
+	}
+</style>

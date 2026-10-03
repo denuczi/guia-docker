@@ -1,0 +1,21 @@
+# Project artifacts (never committed)
+.agents/
+.atl/
+DESIGN.md
+openspec/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Astro cache and generated types
+.astro/
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# OS artifacts
+.DS_Store

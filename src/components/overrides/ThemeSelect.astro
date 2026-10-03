@@ -1,0 +1,145 @@
+---
+// ThemeSelect override: compact sun/moon icon toggle replacing Starlight's
+// default theme `<select>` (registered via `components.ThemeSelect` in
+// astro.config.mjs; supported by the installed Starlight 0.42.5 per its
+// ComponentUserConfig schema).
+//
+// Behavior contract (DESIGN.md Theme System + Theme Toggle prompt):
+// - First visit with no saved preference follows the system scheme. The
+//   stock ThemeProvider inline script already sets
+//   `documentElement.dataset.theme` before first paint from localStorage or
+//   `prefers-color-scheme`; this toggle reads that value as the source of
+//   truth, so there is no flash and no duplicate initialization.
+// - Preference persists under Starlight's own `starlight-theme` key, keeping
+//   compatibility with ThemeProvider if the override is ever removed.
+// - Explicit light/dark only (no `auto` option): choosing is persisting.
+// - No page animation on switch: a single dataset flip, no transitions.
+// - Static-first: server-rendered button plus a small script, no framework
+//   runtime, no `client:*` island. Icon state swaps through
+//   `:root[data-theme]` CSS, so it is correct before the script runs.
+// - ClientRouter-safe: wiring is idempotent per element and re-runs on
+//   `astro:after-swap`, so header + mobile-menu instances keep working after
+//   client-side navigations.
+---
+
+<button
+	type="button"
+	class="theme-toggle"
+	data-theme-toggle={true}
+	aria-label="Cambiar el tema"
+	title="Cambiar el tema"
+>
+	<svg
+		class="theme-toggle-icon theme-toggle-icon-moon"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+	>
+		<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+	</svg>
+	<svg
+		class="theme-toggle-icon theme-toggle-icon-sun"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+	>
+		<circle cx="12" cy="12" r="4"></circle>
+		<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+	</svg>
+</button>
+
+<script>
+	// Tiny behavior module, no framework. Reads Starlight's persisted key,
+	// falls back to the already-resolved `data-theme` (system preference on
+	// first visit), then toggles explicit light/dark on click.
+	function currentTheme(): 'light' | 'dark' {
+		const stored =
+			typeof localStorage !== 'undefined' ? localStorage.getItem('starlight-theme') : null;
+		if (stored === 'light' || stored === 'dark') return stored;
+		return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+	}
+
+	function describeAction(theme: 'light' | 'dark'): string {
+		return theme === 'light' ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro';
+	}
+
+	function applyTheme(theme: 'light' | 'dark'): void {
+		document.documentElement.dataset.theme = theme;
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem('starlight-theme', theme);
+		}
+		for (const button of document.querySelectorAll('[data-theme-toggle]')) {
+			if (button instanceof HTMLButtonElement) {
+				button.setAttribute('aria-label', describeAction(theme));
+			}
+		}
+	}
+
+	function wireThemeToggles(): void {
+		for (const button of document.querySelectorAll('[data-theme-toggle]')) {
+			if (!(button instanceof HTMLButtonElement)) continue;
+			// Idempotent: ClientRouter re-executes page scripts after each
+			// client-side navigation, and the mobile menu renders a second
+			// instance, so never attach twice to the same element.
+			if (button.dataset.wired === 'true') continue;
+			button.dataset.wired = 'true';
+			button.addEventListener('click', () => {
+				applyTheme(currentTheme() === 'light' ? 'dark' : 'light');
+			});
+		}
+		applyTheme(currentTheme());
+	}
+
+	wireThemeToggles();
+	// Re-wire after client-side route transitions (new header instances).
+	document.addEventListener('astro:after-swap', wireThemeToggles);
+</script>
+
+<style>
+	.theme-toggle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		color: var(--color-text-secondary);
+		background-color: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--radius-control);
+		cursor: pointer;
+		/* Instant switch by contract: no full-page animation, and nothing
+		 * here animates, so reduced-motion needs no special case. */
+	}
+
+	.theme-toggle:hover {
+		color: var(--color-text);
+		background-color: var(--color-surface-muted);
+		border-color: var(--color-border);
+	}
+
+	.theme-toggle-icon-sun {
+		display: none;
+	}
+
+	/* Icon follows the resolved theme without waiting for the script:
+	 * moon invites darkness from light mode, sun invites light from dark. */
+	:root[data-theme='dark'] .theme-toggle-icon-sun {
+		display: block;
+	}
+
+	:root[data-theme='dark'] .theme-toggle-icon-moon {
+		display: none;
+	}
+</style>

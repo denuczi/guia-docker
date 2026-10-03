@@ -1,0 +1,159 @@
+---
+title: Instalar Docker en Linux
+description: Instala Docker Desktop con el paquete DEB o RPM de tu distribución, verifica KVM y arranca el servicio de usuario.
+---
+
+**Docker Desktop** es la forma recomendada de empezar con Docker en Linux si
+quieres una aplicación con interfaz además de la terminal. Incluye el motor (el
+demonio que ejecuta los contenedores), la terminal `docker` y Compose. El
+servicio corre por usuario, no como servicio global del sistema.
+
+Esta guía cubre la instalación interactiva normal. El despliegue empresarial
+con MDM o proxies queda fuera del alcance.
+
+## Qué aprenderás
+
+- Qué distribuciones cubre esta guía y qué necesitas antes de instalar.
+- Cómo verificar que tu equipo soporta virtualización KVM.
+- Cómo instalar el paquete `.deb` en Ubuntu o Debian y el `.rpm` en Fedora.
+- Cómo arrancar Docker Desktop como servicio de usuario.
+- Cómo verificar que el motor responde y ejecuta contenedores.
+
+## Requisitos
+
+- Ubuntu o Debian de 64 bits, o Fedora de 64 bits.
+- Virtualización KVM disponible en el equipo.
+- Una cuenta con `sudo` para instalar paquetes.
+- Conexión a internet para descargar el paquete y el repositorio oficial.
+
+## Pasos mínimos
+
+### 1. Verifica la virtualización KVM
+
+Docker Desktop necesita KVM para ejecutar la máquina virtual del motor.
+Compruébalo así:
+
+```bash title="terminal"
+lsmod | grep kvm
+```
+
+Si el comando muestra líneas con `kvm`, la virtualización está disponible. Si
+no muestra nada, actívala en la BIOS o UEFI. Luego añade tu usuario al grupo
+`kvm` para que Docker Desktop pueda usar el dispositivo.
+
+### 2. Instala el paquete de tu distribución
+
+Sigue este orden sin saltarte pasos: primero la descarga, después el
+repositorio y por último la instalación del archivo.
+
+1. Descarga el archivo de tu distribución desde la página oficial de Docker:
+[Docker Desktop para Linux en formato DEB (Ubuntu o Debian)](https://desktop.docker.com/linux/main/amd64/docker-desktop-amd64.deb?utm_source=docker&utm_medium=webreferral&utm_campaign=docs-driven-download-linux-amd64)
+o [Docker Desktop para Linux en formato RPM (Fedora)](https://desktop.docker.com/linux/main/amd64/docker-desktop-x86_64.rpm?utm_source=docker&utm_medium=webreferral&utm_campaign=docs-driven-download-linux-amd64).
+2. Configura el repositorio oficial de Docker según tu distribución, siguiendo las instrucciones de la página oficial para tu sistema.
+3. Instala el archivo que descargaste en el paso 1.
+
+En Ubuntu o Debian, con el paquete `.deb`. Ejecuta estos comandos en la carpeta que
+contiene el archivo descargado (normalmente `~/Descargas`):
+
+```bash title="terminal"
+cd ~/Descargas
+sudo apt install ./docker-desktop-amd64.deb
+```
+
+En Fedora, con el paquete `.rpm`:
+
+```bash title="terminal"
+cd ~/Descargas
+sudo dnf install ./docker-desktop-x86_64.rpm
+```
+
+Instala solo el paquete de tu distribución: el `.deb` no sirve en Fedora y el
+`.rpm` no sirve en Ubuntu o Debian.
+
+### 3. Arranca Docker Desktop
+
+Abre Docker Desktop desde el menú de aplicaciones de tu escritorio, o arráncalo
+desde la terminal. Para entender este paso necesitas una idea previa:
+
+- Un **servicio** es un programa que trabaja en segundo plano, sin ventana:
+  queda encendido esperando tus órdenes. Docker Desktop funciona así: su
+  motor queda en segundo plano esperando tus comandos `docker`.
+- Docker **no** está siempre activo: funciona solo mientras Docker Desktop
+  está en marcha. Tú decides cuándo arrancarlo y cuándo detenerlo.
+- `systemctl` es la herramienta del sistema Linux para manejar esos programas de
+  fondo. La opción `--user` indica que es un programa tuyo (no de todo el
+  sistema), por eso no pide permisos de administrador.
+
+```bash title="terminal"
+systemctl --user start docker-desktop
+```
+
+Y para detenerlo cuando termines:
+
+```bash title="terminal"
+systemctl --user stop docker-desktop
+```
+
+Si quieres que Docker Desktop arranque solo cada vez que enciendas tu
+computadora e inicies sesión en ella (no es la sesión de Docker Hub, sino
+la de tu equipo), actívalo una vez:
+
+```bash title="terminal"
+systemctl --user enable docker-desktop
+```
+
+Para deshacerlo:
+
+```bash title="terminal"
+systemctl --user disable docker-desktop
+```
+
+Acepta los términos de suscripción la primera vez y espera a que la
+aplicación indique que el motor está en ejecución.
+
+## Verificación
+
+Comprueba que el cliente y el servidor responden:
+
+```bash title="terminal"
+docker version
+```
+
+Debes ver las secciones del cliente y del servidor, con versiones del motor en
+ambas. Los números exactos varían según la versión instalada:
+
+```text title="resultado" frame="terminal"
+Client: Docker Engine - Community
+ Version: 28.0.0
+Server: Docker Engine - Community
+ Engine:
+  Version: 28.0.0
+```
+
+Si el servidor no aparece, el motor de Docker no está en ejecución: abre Docker Desktop
+o repite el comando `systemctl --user start docker-desktop`.
+
+Luego ejecuta el contenedor de prueba:
+
+```bash title="terminal"
+docker run hello-world
+```
+
+El resultado confirma que el motor descarga la imagen de prueba y la ejecuta:
+
+```text title="resultado" frame="terminal"
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+```
+
+## Error común
+
+Intentar arrancar Docker Desktop como servicio global del sistema (sin
+`--user`) o con KVM desactivado. El motor no inicia. Verifica KVM con
+`lsmod | grep kvm`, usa siempre `systemctl --user start docker-desktop` y
+revisa que tu usuario pertenezca al grupo `kvm`.
+
+## Siguiente paso
+
+Docker ya está instalado y verificado. Continúa con [Qué es Docker](./../what-is-docker/)
+para entender qué es el motor que acabas de instalar.

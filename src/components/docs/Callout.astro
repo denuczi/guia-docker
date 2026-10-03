@@ -1,0 +1,28 @@
+---
+// Callout: four-variant wrapper over Starlight's Aside.
+//
+// The `variant` prop uses documentation language (info/tip/warning/danger)
+// and maps onto Aside's built-in types (note/tip/caution/danger). Styling,
+// icons, and aside hues all come from the token-mapped Starlight shell, so
+// this file declares no colors: meaning is carried by the required `title`
+// text plus Aside's icon, never by color alone (DESIGN.md rule 6).
+import { Aside } from '@astrojs/starlight/components';
+
+export interface Props {
+	variant: 'info' | 'tip' | 'warning' | 'danger';
+	title: string;
+}
+
+const { variant, title } = Astro.props;
+
+const type = {
+	info: 'note',
+	tip: 'tip',
+	warning: 'caution',
+	danger: 'danger',
+} as const;
+---
+
+<Aside type={type[variant]} title={title}>
+	<slot />
+</Aside>

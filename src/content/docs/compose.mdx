@@ -1,0 +1,223 @@
+---
+title: Docker Compose
+description: Declara varios contenedores como un sistema con servicios, redes, volúmenes y variables, y controla su ciclo de vida completo.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+En [Redes](./../networks/) dejaste dos servicios conversando. Un contenedor `web` con `nginx:1.29` respondía en el navegador y un contenedor `db` con `postgres:18-alpine` guardaba los datos. Se encontraban por su nombre dentro de una red privada y solo `web` publicaba un puerto.
+
+El problema aparece al día siguiente. Para repetir ese sistema tienes que reescribir dos órdenes largas de memoria, en el orden correcto y sin equivocarte en ninguna bandera. Si un compañero quiere reproducir tu entorno, le dictas las órdenes por chat y cruzas los dedos. Eso es frágil. Compose responde a esta pregunta: cómo declaro la aplicación COMPLETA una vez y la levanto con una sola orden.
+
+## Las dos órdenes que hoy repites de memoria
+
+Para reconstruir el sistema de la lección anterior necesitas algo parecido a esto. La red se crea una vez. Después nace cada contenedor con su nombre, su red, sus puertos y sus datos:
+
+```bash title="terminal"
+docker network create app-network
+```
+
+```bash title="terminal"
+docker run -d --name db --network app-network -e POSTGRES_PASSWORD=example-password -v db-data:/var/lib/postgresql/data postgres:18-alpine
+```
+
+```bash title="terminal"
+docker run -d --name web --network app-network -p 8080:80 nginx:1.29
+```
+
+Cada bandera tiene un costo. `--name` pone el nombre. `--network` mete el contenedor en el canal privado. `-p` abre la puerta hacia tu equipo. `-v` conecta el volumen de datos. `-e` pasa la contraseña que postgres exige. Olvida una sola y el sistema no arranca igual. Cambia el orden y el compañero reproduce otra cosa.
+
+El archivo Compose es la versión escrita de esas mismas órdenes. Lo describes una vez en un archivo y Compose ejecuta la creación por ti.
+
+## El archivo que escribe esas órdenes una sola vez
+
+Crea un archivo llamado `compose.yaml` en una carpeta vacía. Este archivo declara los mismos dos servicios de la lección anterior:
+
+```yaml title="compose.yaml"
+services:
+  web:
+    image: nginx:1.29
+    ports:
+      - "8080:80"
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_PASSWORD: example-password
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
+```
+
+Lee el archivo como la traducción de las órdenes anteriores. Cada clave corresponde a una bandera que ya conoces y ninguna queda sin explicar.
+
+`services` declara cada contenedor del sistema. Aquí hay dos: `web` y `db`.
+
+`services.web` y `services.db` son los nombres de cada servicio. Equivalen a `--name web` y `--name db`. Además son los nombres que resuelven dentro de la red, igual que en la lección anterior.
+
+`image` es la plantilla de cada contenedor. Equivale a la imagen al final de cada `docker run`. Este ejemplo usa imágenes listas para no mezclar la construcción con la coordinación.
+
+`ports` equivale a `-p`. Solo `web` publica `"8080:80"`: el puerto `8080` de tu equipo lleva al puerto `80` del contenedor. `db` no tiene `ports`, así que sigue invisible para tu equipo y visible para `web`. Es la misma regla de la lección anterior.
+
+`environment` pasa variables al contenedor. Equivale a `-e`. Aquí `POSTGRES_PASSWORD` es la contraseña que postgres exige para iniciar.
+
+`volumes` dentro del servicio equivale a `-v`. La línea `db-data:/var/lib/postgresql/data` monta el volumen nombrado `db-data` en la ruta donde postgres guarda sus filas.
+
+`volumes` al final del archivo declara ese volumen nombrado. Equivale a crearlo antes con `docker volume create db-data`. Sin esta declaración Compose no sabe que `db-data` es un volumen gestionado por él.
+
+Observa lo que falta a propósito. No hay ninguna clave de red en este archivo. Tampoco escribes `--network` en ningún lado. Compose crea una red privada por defecto para este archivo y mete ambos servicios dentro. Los servicios se alcanzan por su nombre de servicio gracias al mismo DNS interno de la lección anterior. Es continuidad, no un mecanismo nuevo.
+
+## La contraseña que postgres exige
+
+Sin `POSTGRES_PASSWORD` el servicio `db` no arranca. El valor vive en el archivo, bajo `environment`, para que cualquiera que levante el proyecto obtenga el mismo comportamiento.
+
+El valor `example-password` de este ejemplo es un marcador ficticio. Cámbialo por otra cadena en tu práctica. Si prefieres no ver la contraseña dentro del archivo, una alternativa de una línea es `env_file: .env`, que la lee desde un archivo `.env` vecino. La gestión de secretos en producción es un tema posterior y deliberado.
+
+## Una orden levanta todo el archivo
+
+Desde la carpeta donde guardaste `compose.yaml` ejecuta:
+
+```bash title="terminal"
+docker compose up -d
+```
+
+Usa la forma con espacio: `docker compose`. La forma antigua con guion, `docker-compose`, pertenece a la versión previa y ya no es la que debes usar.
+
+`-d` deja el conjunto corriendo en segundo plano, igual que `-d` en `docker run`. Sin `-d` los logs ocupan tu terminal. Con `-d` recuperas el control de inmediato.
+
+Esta orden lee el archivo y crea lo que falta: la red por defecto, el volumen `db-data` y los dos contenedores. La salida es breve y los valores exactos dependen de tu carpeta:
+
+```text title="resultado" frame="terminal"
+[+] Running 4/4
+ ✔ Network compose_default Created
+ ✔ Volume compose_db-data Created
+ ✔ Container compose-db-1 Started
+ ✔ Container compose-web-1 Started
+```
+
+Los nombres incluyen el nombre de tu carpeta como prefijo. Lo importante es el patrón: red creada, volumen creado y dos contenedores iniciados desde un solo archivo.
+
+## Comprobar que el conjunto responde
+
+Mira el conjunto como una unidad:
+
+```bash title="terminal"
+docker compose ps
+```
+
+```text title="resultado" frame="terminal"
+NAME             IMAGE                STATUS         PORTS
+compose-web-1    nginx:1.29           Up 10 seconds  0.0.0.0:8080->80/tcp
+compose-db-1     postgres:18-alpine   Up 10 seconds
+```
+
+Los identificadores de tu equipo serán distintos. Lee solo lo esencial. `web` muestra el mapeo `8080->80` hacia tu equipo. `db` no muestra puertos porque no publica ninguno. Ambos están en estado de marcha.
+
+La prueba visible es la misma de la lección anterior. Abre `http://localhost:8080` en el navegador y responde `web`. La base de datos no tiene dirección en el navegador porque no publicó nada.
+
+Para leer la salida de cada servicio por separado indica su nombre:
+
+```bash title="terminal"
+docker compose logs web
+```
+
+```bash title="terminal"
+docker compose logs db
+```
+
+`logs web` muestra la actividad del servidor web. `logs db` muestra el arranque de postgres. Cuando algo falla, los logs del servicio afectado son siempre el primer lugar donde mirar.
+
+<Callout variant="info" title="Un archivo, un prefijo">
+`docker compose` siempre trabaja sobre el archivo de la carpeta actual. Los comandos `ps` y `logs` sin más argumentos muestran ese conjunto y ningún otro. No necesitas escribir los nombres de contenedor a mano.
+</Callout>
+
+## Detener el conjunto sin borrarlo
+
+Detener pausa el conjunto completo y lo deja listo para continuar después:
+
+```bash title="terminal"
+docker compose stop
+```
+
+```bash title="terminal"
+docker compose start
+```
+
+`stop` apaga los dos contenedores pero conserva todo: los contenedores, la red y los volúmenes siguen existiendo. `start` los enciende de nuevo desde el mismo estado. Es la pausa del sistema entero, no solo de un contenedor.
+
+## Deshacer el conjunto sin perder los datos
+
+`down` es otra operación distinta. Deshace el conjunto: elimina los contenedores y la red que Compose creó. Los volúmenes nombrados sobreviven por defecto. Esa es la consecuencia honesta que debes recordar.
+
+```bash title="terminal"
+docker compose down
+```
+
+Después de `down`, los datos de postgres siguen en el volumen `db-data`. La prueba es directa: lista los volúmenes y el nombre sigue ahí, o levanta de nuevo con `up -d` y la información persiste.
+
+Solo cuando pides el borrado de volúmenes en forma explícita se eliminan también los datos persistentes:
+
+```bash title="terminal"
+docker compose down -v
+```
+
+<Callout variant="danger" title="down -v borra los datos">
+`down` conserva los volúmenes nombrados. `down -v` los elimina junto con los datos que contienen. Usa `-v` solo cuando tengas claro que quieres empezar con la base vacía.
+</Callout>
+
+## Cambiar el archivo recrea solo lo que cambió
+
+El flujo diario es editar y levantar de nuevo. Cambia el archivo `compose.yaml`, por ejemplo el puerto publicado de `web` a `"8081:80"`, y ejecuta:
+
+```bash title="terminal"
+docker compose up -d
+```
+
+Compose compara el archivo con lo que está en marcha y recrea solo lo que cambió. En este caso recrea `web` con el puerto nuevo y deja `db` intacto. No reescribes órdenes ni detienes nada a mano. Esa es la intuición completa: el archivo manda y `up -d` reconcilia.
+
+## Si la imagen es tuya, Compose la construye primero
+
+Este ejemplo usa imágenes listas para que la coordinación no se mezcle con la construcción. Cuando la imagen es tu propio programa, la clave `build: .` significa: empaqueta esta imagen desde el `Dockerfile` de esta carpeta antes de crear el contenedor. El detalle de cómo se escribe ese `Dockerfile` pertenece a la lección anterior y no se repite aquí.
+
+## Tres errores que confunden al inicio
+
+### Copiaste un ejemplo con version al inicio
+
+**Lo que ves:** el archivo empieza con `version: "3"` y Compose avisa que ese atributo es obsoleto o simplemente lo ignora.
+
+**Por qué pasa:** los ejemplos viejos pedían `version`. La sintaxis moderna de Compose no la necesita.
+
+**Arreglo seguro:** borra la línea `version` y deja `services` como primera clave, tal como en el ejemplo de esta página.
+
+### Un servicio no arranca
+
+**Lo que ves:** `docker compose ps` muestra un servicio detenido o reiniciándose. Quizá olvidaste `POSTGRES_PASSWORD` o escribiste mal el nombre de la imagen.
+
+**Por qué pasa:** el contenedor intentó iniciar y su programa principal falló. La causa está en su salida, no en el resto del conjunto.
+
+**Arreglo seguro:** lee primero los logs de ese servicio y corrige el archivo:
+
+```bash title="terminal"
+docker compose logs db
+```
+
+### El puerto ya está ocupado
+
+**Lo que ves:** al levantar aparece un error de puerto en uso para `8080`.
+
+**Por qué pasa:** otro contenedor o programa de tu equipo ya ocupa ese puerto publicado. Solo `web` publica puertos en este ejemplo, así que el conflicto siempre viene de ahí.
+
+**Arreglo seguro:** detén el otro programa que usa ese puerto o cambia el lado izquierdo del mapeo a uno libre, por ejemplo `"8081:80"`, y repite `docker compose up -d`.
+
+## Lo que queda en marcha y siguiente paso
+
+Un archivo declara el sistema entero y una orden lo pone en marcha:
+
+```text
+compose.yaml -> web + db + red por defecto + volumen db-data
+```
+
+Abre el navegador solo para `web`. Alcanza `db` solo por su nombre desde `web`. Los datos sobreviven en `db-data` aunque deshagas los contenedores.
+
+Continúa con [Node.js](./../nodejs/) para ver este mismo patrón con una aplicación real construida desde su `Dockerfile`.

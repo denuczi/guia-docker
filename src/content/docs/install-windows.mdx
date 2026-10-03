@@ -1,0 +1,116 @@
+---
+title: Instalar Docker en Windows
+description: Activa el backend WSL 2, instala Docker Desktop por usuario y verifica que el motor responde.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+**Docker Desktop** es la forma recomendada de usar Docker en Windows. Incluye el
+motor (el demonio que ejecuta los contenedores), la terminal `docker`, Compose
+y una aplicación para iniciar y detener el servicio. En Windows usa el backend
+**WSL 2** (Subsistema de Windows para Linux, versión 2), que proporciona el
+núcleo Linux que los contenedores necesitan.
+
+## Qué aprenderás
+
+- Qué versión de Windows y cuánta memoria necesitas antes de instalar.
+- Cómo activar el backend WSL 2 con `wsl --install` y `wsl --update`.
+- Cómo instalar Docker Desktop por usuario con el instalador oficial.
+- Cómo verificar que el motor responde y ejecuta contenedores.
+
+## Requisitos
+
+- Windows 10 22H2 o superior, o Windows 11.
+- Al menos 8 GB de memoria RAM.
+- Virtualización activada en la BIOS o UEFI del equipo.
+- Permiso para instalar aplicaciones en tu usuario.
+
+## Pasos mínimos
+
+### 1. Activa el backend WSL 2
+
+Abre PowerShell como administrador y ejecuta:
+
+```bash title="terminal"
+wsl --install
+```
+
+Este comando instala WSL con su distribución base. Si ya tienes WSL, actualízalo
+después de reiniciar:
+
+```bash title="terminal"
+wsl --update
+```
+
+Reinicia el equipo si el instalador lo pide: WSL 2 no funciona hasta completar
+el reinicio.
+
+### 2. Instala Docker Desktop por usuario
+
+Descarga [Docker Desktop para Windows](https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe?utm_source=docker&utm_medium=webreferral&utm_campaign=docs-driven-download-win-amd64)
+(`Docker Desktop Installer.exe`) desde la página oficial de Docker y
+ejecuta la instalación por usuario:
+
+```bash title="terminal"
+Docker Desktop Installer.exe install --user
+```
+
+La instalación por usuario no requiere permisos de administrador para cada uso
+posterior y es la opción recomendada para empezar.
+
+### 3. Inicia la aplicación y acepta los términos
+
+Abre Docker Desktop, acepta los términos de suscripción y confirma que el
+backend WSL 2 queda seleccionado. Espera a que la aplicación indique que el
+motor está en ejecución antes de usar la terminal.
+
+<Callout variant="info" title="Términos de suscripción">
+Docker Desktop es gratuito para uso personal, pequeñas empresas y educación; otros usos requieren una suscripción de pago.
+</Callout>
+
+## Verificación
+
+Comprueba que el cliente y el servidor responden:
+
+```bash title="terminal"
+docker version
+```
+
+Debes ver las secciones del cliente y del servidor, con versiones del motor en
+ambas. Los números exactos varían según la versión instalada:
+
+```text title="resultado" frame="terminal"
+Client: Docker Engine - Community
+ Version: 28.0.0
+Server: Docker Engine - Community
+ Engine:
+  Version: 28.0.0
+```
+
+Si el servidor no aparece, el motor de Docker no está en ejecución: abre Docker Desktop
+y espera a que el servicio arranque.
+
+Luego ejecuta el contenedor de prueba:
+
+```bash title="terminal"
+docker run hello-world
+```
+
+El resultado confirma que el motor descarga la imagen de prueba y la ejecuta:
+
+```text title="resultado" frame="terminal"
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+```
+
+## Error común
+
+Instalar Docker Desktop con la virtualización desactivada en la BIOS o con WSL
+desactualizado. El motor no arranca y muestra errores del backend. Activa la
+virtualización en la BIOS o UEFI, ejecuta `wsl --update`, reinicia y vuelve a
+abrir Docker Desktop.
+
+## Siguiente paso
+
+Docker ya está instalado y verificado. Continúa con [Qué es Docker](./../what-is-docker/)
+para entender qué es el motor que acabas de instalar.

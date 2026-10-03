@@ -1,0 +1,172 @@
+/* Design tokens for the Docker documentation site.
+ *
+ * Sole owner of every DESIGN.md value. No other stylesheet may hard-code a
+ * color, font stack, type size, spacing step, radius, or layout width: all
+ * visual values resolve through the variables declared here.
+ *
+ * Theme model: `:root` carries the light theme; `:root[data-theme='dark']`
+ * overrides color tokens for dark mode. Starlight sets `data-theme` on the
+ * document element, so both selectors always resolve deterministically.
+ * Non-color tokens (fonts, type scale, spacing, shape, layout) are identical
+ * in both themes and are therefore declared once on `:root`.
+ *
+ * Contrast ledger (text on page background, WCAG AA 4.5:1 for normal text):
+ * - Light body `#18181B` on `#FAFAFA` ~16:1; secondary ~7.5:1; muted ~4.7:1.
+ * - Light accent `#2563EB` on `#FAFAFA` ~5.1:1; on accent-soft ~4.6:1.
+ * - Light success/warning/danger all clear 4.5:1 on page/surface backgrounds.
+ * - Dark body `#F4F4F5` on `#09090B` ~18:1; secondary ~7:1; accent ~7.8:1.
+ * - FLAGGED: dark muted `#71717A` on `#09090B` ~4.1:1, below AA for normal
+ *   text. DESIGN.md keeps this value, so muted text in dark mode is
+ *   metadata/tertiary-navigation only, never body copy. See starlight.css,
+ *   which maps secondary (not muted) onto Starlight's default body-adjacent
+ *   slots wherever body-size text can appear.
+ * - `--color-text-disabled` is intentionally low-contrast in both themes and
+ *   MUST be used for disabled controls only, never for readable content.
+ * - Code pairs stay terminal-dark by design: `#F4F4F5` on `#18181B` (light
+ *   theme canvas) and `#E4E4E7` on `#050506` (dark theme canvas), ~14:1+.
+ */
+
+:root {
+	/* Surface hierarchy: page -> surface -> muted. Borders separate levels;
+	 * shadows are reserved for temporary overlays (see DESIGN.md). */
+	--color-paper: #fafafa;
+	--color-surface: #ffffff;
+	--color-surface-muted: #f4f4f5;
+	--color-surface-raised: #ffffff;
+	--color-void: #09090b;
+	--color-border: #e4e4e7;
+	--color-border-strong: #d4d4d8;
+
+	/* Text */
+	--color-text: #18181b;
+	--color-text-secondary: #52525b;
+	--color-text-muted: #71717a;
+	--color-text-disabled: #a1a1aa;
+
+	/* Interaction accent: links, current navigation, keyboard focus. */
+	--color-accent: #2563eb;
+	--color-accent-hover: #1d4ed8;
+	--color-accent-soft: #eff6ff;
+
+	/* Semantic states. Never the sole signal: pair with text, icon, or
+	 * structure (callouts always carry a label plus an icon). */
+	--color-success: #15803d;
+	--color-warning: #b45309;
+	--color-danger: #b91c1c;
+
+	/* Terminal-dark code canvas. Deliberately dark in BOTH themes so command
+	 * blocks read as terminal output regardless of the page theme. */
+	--color-code-canvas: #18181b;
+	--color-code-text: #f4f4f5;
+
+	/* Command canvas override (explicit user request, takes precedence over
+	 * DESIGN.md for command/result frames only): pure black, never the
+	 * grayish-black canvas above. File frames (Dockerfile, YAML, diagrams)
+	 * keep --color-code-canvas; only `.frame.is-terminal` frames consume
+	 * this token (see starlight.css). */
+	--color-command-canvas: #000000;
+
+	/* Typography. System-font fallback stacks: self-hosting Inter/mono is
+	 * deferred (see design open questions); stacks resolve to system fonts
+	 * until webfonts land, with no layout shift risk. The mono stack favors
+	 * widely installed developer faces first and ends with Linux distro
+	 * defaults (DejaVu/Noto Sans Mono), so terminal blocks keep their
+	 * metrics on the systems reading this documentation. */
+	--font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+		"Segoe UI", sans-serif;
+	--font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, SFMono-Regular,
+		"Cascadia Code", "Cascadia Mono", Menlo, Monaco, Consolas, "DejaVu Sans Mono",
+		"Noto Sans Mono", "Liberation Mono", monospace;
+
+	/* Type scale */
+	--text-micro: 11px;
+	--text-caption: 13px;
+	--text-code-label: 12px;
+	--text-body: 16px;
+	--text-lead: 18px;
+	--text-heading-sm: 20px;
+	--text-heading: 28px;
+	--text-heading-lg: 40px;
+	--leading-micro: 1.45;
+	--leading-caption: 1.5;
+	--leading-code-label: 1.5;
+	--leading-body: 1.7;
+	--leading-lead: 1.65;
+	--leading-heading-sm: 1.4;
+	--leading-heading: 1.2;
+	--leading-heading-lg: 1.1;
+	--weight-micro: 500;
+	--weight-caption: 400;
+	--weight-body: 400;
+	--weight-lead: 400;
+	--weight-heading-sm: 600;
+	--weight-heading: 600;
+	--weight-heading-lg: 700;
+	/* Display tracking: tighter on larger headings for editorial rhythm.
+	 * Body measure: 70ch sits inside DESIGN.md's 65-80ch reading lane. */
+	--tracking-display: -0.03em;
+	--tracking-heading: -0.02em;
+	--measure-body: 70ch;
+	/* Page atmosphere: static top-glow height. The tint itself derives from
+	 * --color-accent via color-mix in starlight.css, so no color lives here. */
+	--glow-height: 340px;
+
+	/* Layout */
+	--page-max-width: 1440px;
+	--article-max-width: 780px;
+	--sidebar-width: 260px;
+	--toc-width: 220px;
+	--header-height: 58px;
+
+	/* Shape: precise, not playful. Pill radius is reserved for genuinely
+	 * pill-shaped badges only. */
+	--radius-control: 6px;
+	--radius-card: 6px;
+	--radius-pill: 9999px;
+
+	/* Spacing: 4px base unit, 8px primary rhythm. */
+	--space-4: 4px;
+	--space-8: 8px;
+	--space-12: 12px;
+	--space-16: 16px;
+	--space-20: 20px;
+	--space-24: 24px;
+	--space-32: 32px;
+	--space-40: 40px;
+	--space-48: 48px;
+	--space-64: 64px;
+	--space-80: 80px;
+	--space-96: 96px;
+}
+
+:root[data-theme="dark"] {
+	/* Surface hierarchy: page (#09090B) -> surface (#111113) -> raised (#18181B). */
+	--color-paper: #09090b;
+	--color-surface: #111113;
+	--color-surface-muted: #18181b;
+	--color-surface-raised: #18181b;
+	--color-border: #27272a;
+	--color-border-strong: #3f3f46;
+
+	/* Text */
+	--color-text: #f4f4f5;
+	--color-text-secondary: #a1a1aa;
+	--color-text-muted: #71717a;
+	--color-text-disabled: #52525b;
+
+	/* Accent shifts lighter to hold contrast on near-black surfaces. */
+	--color-accent: #60a5fa;
+	--color-accent-hover: #93c5fd;
+	--color-accent-soft: #172554;
+
+	/* Semantic states, brightened for dark surfaces. */
+	--color-success: #4ade80;
+	--color-warning: #f59e0b;
+	--color-danger: #f87171;
+
+	/* Code canvas deepens but stays terminal-dark: the invariant holds.
+	 * The pure-black command override above is identical in both themes. */
+	--color-code-canvas: #050506;
+	--color-code-text: #e4e4e7;
+	--color-command-canvas: #000000;
+}

@@ -1,0 +1,88 @@
+---
+title: Docker desde cero
+description: Documentación progresiva para aprender Docker desde cero, sin conocimientos previos.
+---
+
+Esta guía enseña Docker desde cero, paso a paso y sin suponer conocimientos previos.
+Cada página define un concepto en español claro, explica por qué existe, muestra un
+ejemplo mínimo que puedes ejecutar y te dice qué esperar y qué no romper.
+
+## Qué aprenderás
+
+Al terminar esta ruta sabrás crear, iniciar, detener y eliminar contenedores;
+construir imágenes con un `Dockerfile`; persistir datos con volúmenes; conectar
+contenedores con redes; orquestar varios servicios con Compose; y limpiar el
+sistema sin perder datos por accidente.
+
+## Antes de empezar
+
+Necesitas Docker instalado y el demonio en ejecución. Lo verificas así:
+
+```bash title="terminal"
+docker version
+```
+
+Si ese comando responde sin errores, puedes empezar. Si no, instala Docker
+Desktop según tu sistema ([macOS](./install-macos/),
+[Windows](./install-windows/) o [Linux](./install-linux/)) antes de continuar.
+
+## Ruta ordenada
+
+Sigue las páginas en este orden. Cada una construye sobre la anterior.
+
+### Ejemplo
+
+1. [Tu primer contenedor](./examples/first-container/) — ejecuta `nginx`, verifica con `docker ps` y limpia sin perder la imagen.
+
+### Instalación
+
+2. [Instalar en macOS](./install-macos/) — instalador según tu chip y verificación del motor.
+3. [Instalar en Windows](./install-windows/) — backend WSL 2, instalación por usuario y verificación.
+4. [Instalar en Linux](./install-linux/) — paquete DEB o RPM, KVM y servicio de usuario.
+
+### Fundamentos
+
+5. [Qué es Docker](./what-is-docker/) — ideas, vocabulario y verificación.
+6. [Imágenes](./images/) — plantillas, etiquetas y confianza.
+7. [Contenedores](./containers/) — ciclo de vida y tu primer servidor.
+8. [Registros de imágenes](./registries/) — Docker Hub y el flujo descargar, verificar y ejecutar.
+
+### Uso básico
+
+9. [Ejecutar contenedores](./running-containers/) — anatomía de `docker run`: nombre, puertos y segundo plano.
+10. [Ver y consultar contenedores](./inspecting-containers/) — estado, configuración y shell dentro del contenedor.
+11. [Detener, iniciar y reiniciar](./stopping-containers/) — estados y control del ciclo de vida sin borrar.
+12. [Logs](./container-logs/) — lectura, filtrado y seguimiento de la salida del proceso.
+13. [Eliminar contenedores](./removing-containers/) — borrado seguro: qué se pierde y qué sobrevive.
+14. [Solución de problemas](./troubleshooting/) — orden fijo de investigación y referencia de comandos.
+
+### Datos y comunicación
+
+15. [Volúmenes](./volumes/) — qué datos sobreviven y cuáles no.
+16. [Redes](./networks/) — cómo se comunican los contenedores.
+
+### Construcción de imágenes
+
+17. [Dockerfile](./dockerfile/) — cómo se construye una imagen y su caché.
+
+### Aplicaciones con varios servicios
+
+18. [Docker Compose](./compose/) — varios contenedores como un sistema.
+
+### Proyectos reales
+
+19. [Node.js](./nodejs/) — imagen `node:26-alpine`, usuario no root y `CMD` directo.
+20. [Laravel](./laravel/) — PHP-FPM, Composer y permisos sin recetas mágicas.
+
+### Operación y mantenimiento
+
+21. [Seguridad](./security/) — privilegio mínimo, secretos y puertos.
+22. [Limpieza](./cleanup/) — qué significa "sin uso" antes de borrar.
+23. [Buenas prácticas](./best-practices/) — seis hábitos que previenen los errores de toda la ruta.
+
+## Cómo usar cada lección
+
+Cada página sigue el mismo contrato: qué vas a aprender, qué necesitas antes,
+el concepto con su ejemplo, el resultado esperado, un error común y el paso
+siguiente seguro. Los comandos destructivos siempre explican su consecuencia
+antes de pedirte que los ejecutes.

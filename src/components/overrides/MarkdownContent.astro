@@ -1,0 +1,83 @@
+---
+// MarkdownContent override: stock Starlight content plus working heading
+// anchor links (registered via `components.MarkdownContent` in
+// astro.config.mjs; supported by the installed Starlight 0.42.5 per its
+// ComponentUserConfig schema).
+//
+// Why this override exists: the link-icon button next to headings is emitted
+// by Starlight's `rehype-heading-links` build plugin as plain markup
+// (`div.sl-heading-wrapper > a.sl-anchor-link[href="#id"]`), not by the
+// `AnchorHeading` component (which is not an overridable key), so no
+// component prop can change it. This override keeps the stock rendering
+// untouched and adds copy behavior: clicking an anchor copies the heading's
+// full URL to the clipboard with a button-state tint plus hidden-announcement
+// feedback (shared `copyText` helper, no new island).
+// Default anchor navigation still proceeds, so the link works with and
+// without JavaScript. Restyling (small, muted, hover/focus-only) lives in
+// starlight.css, not here.
+import DefaultMarkdownContent from '@astrojs/starlight/components/MarkdownContent.astro';
+---
+
+<DefaultMarkdownContent><slot /></DefaultMarkdownContent>
+<span class="sr-only" role="status" aria-live="polite" data-heading-feedback={true}></span>
+
+<script>
+	import { copyText } from '../../scripts/copy-text';
+
+	// Mirrors the copy-button auto-revert timing so the anchor tint clears itself.
+	const REVERT_DELAY_MS = 2000;
+
+	function wireHeadingAnchors(): void {
+		const feedback = document.querySelector('[data-heading-feedback]');
+		for (const anchor of document.querySelectorAll('.sl-markdown-content .sl-anchor-link')) {
+			if (!(anchor instanceof HTMLAnchorElement)) continue;
+			// Idempotent: this script re-runs per page render and again on
+			// `astro:after-swap`, so never attach twice to the same link.
+			if (anchor.dataset.wired === 'true') continue;
+			anchor.dataset.wired = 'true';
+			anchor.addEventListener('click', async () => {
+				// Full URL (page + fragment), not just the hash, so the
+				// copied link works outside this page too. Default anchor
+				// navigation is intentionally NOT prevented.
+				const url = new URL(anchor.getAttribute('href') ?? '', location.href).href;
+				const ok = await copyText(url);
+				anchor.dataset.state = ok ? 'success' : 'error';
+				if (feedback instanceof HTMLElement) {
+					// Clear-then-set so repeated clicks re-announce even
+					// when the sentence is identical to the previous one.
+					feedback.textContent = '';
+					feedback.textContent = ok
+						? 'Enlace copiado al portapapeles.'
+						: 'No se pudo copiar el enlace.';
+				}
+				window.setTimeout(() => {
+					delete anchor.dataset.state;
+					if (
+						feedback instanceof HTMLElement &&
+						!document.querySelector('.sl-anchor-link[data-state]')
+					) {
+						feedback.textContent = '';
+					}
+				}, REVERT_DELAY_MS);
+			});
+		}
+	}
+
+	// Keyboard-scrollable code: Expressive Code renders `pre` without a
+	// tabindex, so keyboard users cannot reach horizontal overflow. A plain
+	// tabindex (no roles, no focus trap) keeps long commands scrollable,
+	// exactly like the previous CodeBlock component did.
+	function makeCodeScrollable(): void {
+		for (const pre of document.querySelectorAll(
+			'.sl-markdown-content .expressive-code pre:not([tabindex])',
+		)) {
+			if (pre instanceof HTMLElement) pre.tabIndex = 0;
+		}
+	}
+
+	wireHeadingAnchors();
+	makeCodeScrollable();
+	// Re-wire after client-side route transitions (new headings per page).
+	document.addEventListener('astro:after-swap', wireHeadingAnchors);
+	document.addEventListener('astro:after-swap', makeCodeScrollable);
+</script>

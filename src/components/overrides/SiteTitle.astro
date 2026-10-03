@@ -1,0 +1,82 @@
+---
+// SiteTitle override: navbar-only "Guía Docker" brand text (registered via
+// `components.SiteTitle` in astro.config.mjs; the `SiteTitle` key exists in
+// the installed Starlight 0.42.5 `ComponentUserConfig` schema).
+//
+// Lockup (explicit user request; DESIGN.md invites a distinctive but
+// restrained brand here): terminal-inspired mark + wordmark. The mark is a
+// small container-box outline drawn in pure CSS (no image assets) holding a
+// single `›` prompt glyph in the interaction accent — the ONE accent detail
+// on the brand. The wordmark stays neutral page text with tight tracking and
+// a confident semibold weight. Zero underline/border in every link state;
+// keyboard users keep the global `:focus-visible` accent ring (this file
+// never sets `outline: none`).
+//
+// Why an override instead of `title: 'Guía Docker'`: Starlight derives both
+// the header brand AND every tab `<title>` (`{page} delimiter {siteTitle}`
+// in `getHead`) from the single `title` option via `getSiteTitle`. This
+// component renders only the header brand, so tab titles keep resolving
+// from `title: 'Docker desde cero'` untouched. No core header markup is
+// forked — just this leaf component Starlight explicitly supports.
+//
+// No logo handling: the project configures no `logo`, so the stock
+// logo/img branches are intentionally omitted. Classes stay stock
+// (`site-title sl-flex`) so the neutral-brand rules in starlight.css apply.
+const { siteTitleHref } = Astro.locals.starlightRoute;
+---
+
+<a href={siteTitleHref} class="site-title sl-flex brand-lockup">
+	<span class="brand-mark" aria-hidden="true"><span class="brand-glyph">›</span></span>
+	<span class="brand-word" translate="no">Guía Docker</span>
+</a>
+
+<style>
+	/* Brand lockup: terminal-inspired mark + wordmark, pure CSS, no assets.
+	 * Compact by construction (24px mark + 8px gap + one short word) so the
+	 * 58px header keeps its rhythm and small screens keep room for the
+	 * menu/search/toggle controls. All values resolve through tokens.css. */
+	.brand-lockup {
+		gap: var(--space-8);
+		text-decoration: none;
+		border-bottom: 0;
+	}
+	.brand-lockup:link,
+	.brand-lockup:visited,
+	.brand-lockup:hover,
+	.brand-lockup:active,
+	.brand-lockup:focus,
+	.brand-lockup:focus-visible {
+		text-decoration: none;
+		border-bottom: 0;
+	}
+	/* Container-box motif: bordered rounded square holding a single `›`
+	 * prompt glyph in the interaction accent — the ONE accent detail on the
+	 * brand. Neutral border + muted canvas keep it quiet in both themes. */
+	.brand-mark {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		width: var(--space-24);
+		height: var(--space-24);
+		border: 1.5px solid var(--color-border-strong);
+		border-radius: var(--radius-control);
+		background-color: var(--color-surface-muted);
+	}
+	.brand-glyph {
+		font-family: var(--font-mono);
+		font-size: var(--text-body);
+		font-weight: 700;
+		line-height: 1;
+		color: var(--color-accent);
+	}
+	/* Wordmark: neutral page text, confident semibold, tight tracking.
+	 * Never accent, never underlined (see guards above). */
+	.brand-word {
+		font-size: var(--text-body);
+		font-weight: var(--weight-heading-sm);
+		letter-spacing: var(--tracking-heading);
+		color: var(--color-text);
+		white-space: nowrap;
+	}
+</style>

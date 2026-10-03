@@ -1,0 +1,92 @@
+---
+title: Ver y consultar contenedores
+description: Cómo listar contenedores activos y detenidos, inspeccionar su configuración y entrar a un contenedor en ejecución.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+**Consultar un contenedor** es preguntarle a Docker en qué estado está y cómo
+está configurado. Existe porque los contenedores cambian de estado —en
+ejecución, detenidos, con errores— y no puedes adivinarlo: debes mirarlo.
+
+Piensa en estos comandos como el tablero del auto: antes de tocar el motor,
+miras los indicadores.
+
+## Qué aprenderás
+
+- Cómo listar contenedores activos y también los detenidos.
+- Cómo leer el estado, los puertos y el código de salida.
+- Cómo inspeccionar la configuración completa con `docker inspect`.
+- Cómo abrir una shell dentro de un contenedor en ejecución.
+
+## Antes de empezar
+
+Necesitas el contenedor `web` creado en
+[Ejecutar contenedores](./../running-containers/). No importa si está en
+ejecución o detenido: esta página cubre ambos casos.
+
+## Lista activos y detenidos
+
+```bash title="terminal"
+docker ps
+```
+
+```bash title="terminal"
+docker ps -a
+```
+
+`docker ps` muestra solo los contenedores en ejecución. `docker ps -a` muestra
+todos, incluidos los detenidos, con su código de salida. Esa diferencia es la
+base de todo diagnóstico: si `ps` está vacío pero `ps -a` muestra tu
+contenedor, el problema es que se detuvo, no que desapareció.
+
+## Resultado esperado
+
+Con el contenedor `web` en ejecución, `docker ps -a` muestra una fila así:
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS         PORTS                  NAMES
+a1b2c3d4e5f6   nginx:1.29   Up 2 minutes   0.0.0.0:8080->80/tcp   web
+```
+
+Si el contenedor estuviera detenido, la columna de estado diría algo como
+`Exited (0) 3 minutes ago`: el número entre paréntesis es el código de salida
+del proceso. Un `0` significa salida limpia; otro número señala un error que
+deberás leer en los logs.
+
+## Inspecciona la configuración completa
+
+```bash title="terminal"
+docker inspect web
+```
+
+El resultado es un documento JSON con la configuración detallada: imagen,
+puertos publicados, variables de entorno, montajes y redes. No necesitas
+memorizarlo: sirve para responder preguntas concretas como "¿qué puerto
+publica?" o "¿qué variables tiene?" sin adivinar.
+
+## Entra al contenedor en ejecución
+
+```bash title="terminal"
+docker exec -it web sh
+```
+
+`exec` ejecuta un comando dentro del contenedor en marcha: aquí abre una shell
+(`sh`). Las opciones `-it` mantienen la terminal interactiva para que puedas
+escribir. Sal con `exit`: la shell se cierra pero el contenedor sigue corriendo.
+
+<Callout variant="warning" title="exec necesita el contenedor en ejecución">
+Si `web` está detenido, `docker exec` falla. Primero verifica el estado con
+`docker ps -a` y, si hace falta, arráncalo de nuevo antes de entrar.
+</Callout>
+
+## Error común
+
+Inspeccionar a ciegas con `docker ps` y concluir que "el contenedor no existe"
+cuando en realidad está detenido. Acostúmbrate a usar `docker ps -a` como
+primera mirada: muestra el estado real antes de cualquier remedio.
+
+## Siguiente paso
+
+Continúa con [Detener, iniciar y reiniciar](./../stopping-containers/) para
+controlar el ciclo de vida del contenedor sin perderlo.

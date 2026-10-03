@@ -1,0 +1,166 @@
+---
+title: Qué es Docker
+description: Qué problema resuelve Docker, en qué se diferencia de una máquina virtual y qué vocabulario necesitas antes de ejecutar tu primer comando.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Tienes un programa que funciona en tu equipo. Lo pasas a otro equipo y falla.
+No cambiaste nada del programa. Solo cambió el lugar donde intenta funcionar.
+
+Esta página explica esa situación y qué propone Docker para evitarla.
+No necesitas instalar nada para leerla. No hay órdenes que ejecutar aquí.
+
+## Qué vas a entender
+
+- Por qué un programa funciona en un equipo y falla en otro.
+- Qué te promete Docker en una frase que podrás comprobar después.
+- Con qué tres palabras nombrarás esa promesa.
+- En qué se diferencia Docker de una máquina virtual.
+
+## Funciona aquí, falla allí
+
+Imagina que preparas una presentación en tu equipo. Llevas el archivo a otro
+equipo y las imágenes no aparecen. El archivo es el mismo. Lo que cambió es
+todo lo que lo rodea: programas instalados, versiones, ajustes.
+
+Con el software pasa lo mismo. Un programa rara vez funciona solo. Necesita
+otros programas, versiones concretas y ajustes del equipo. Cuando esas piezas
+no coinciden, aparecen frases conocidas:
+
+- En mi equipo sí funciona.
+- Instala esta versión y prueba de nuevo.
+- No toques esa herramienta, que otro proyecto la necesita.
+
+El problema no está siempre en tu programa. Está en la
+diferencia entre equipos.
+
+Si el mismo programa se comporta distinto en dos equipos,
+sospecha del entorno antes de reescribir el programa.
+
+## Qué te promete Docker
+
+Docker propone llevar el programa junto con todo lo que necesita, en un
+paquete cerrado. Ese paquete se comporta igual aunque cambie el equipo.
+
+En la próxima lección mostrarás una página web sin instalar
+un servidor en tu equipo. Abrirás el navegador y verás el mismo resultado que
+vería otra persona con el mismo paquete.
+
+A esa capacidad de comportarse igual en otro equipo la llamamos
+**portabilidad**. Es la primera palabra que conviene retener. Todavía no
+necesitas ninguna otra.
+
+## Esta página no pide instalación
+
+Esta lección es conceptual. No necesitas instalar nada para leerla
+ni comprobar si Docker está instalado.
+
+Cuando termines la idea, primero instalarás Docker y después verás
+la promesa en marcha en [Tu primer contenedor](./../examples/first-container/).
+
+No instales nada todavía. Termina la idea aquí y verifica después.
+
+## La base: el programa empaquetado
+
+Piensa en una caja que contiene el programa y todo lo que necesita para
+funcionar. La cierras una vez. Donde la abras, el contenido es el mismo.
+
+A esa caja la llamamos **imagen**.
+
+Por ejemplo, `nginx:1.29` nombra una caja concreta:
+
+- `nginx`: el programa que muestra páginas web.
+- `1.29`: la versión exacta de esa caja.
+
+La imagen es la base. No ejecuta nada por sí sola. Solo deja
+el contenido listo para usar.
+
+## La ejecución: poner esa base en marcha
+
+Ahora abre la caja y pon su contenido en marcha en un espacio separado de
+tu equipo. Ese espacio tiene sus propios archivos y sus propias conexiones.
+Lo que pasa dentro no toca lo que tienes instalado fuera.
+
+A ese espacio en marcha lo llamamos **contenedor**.
+
+Por ejemplo, `web` puede ser el nombre de un contenedor creado a partir de
+la imagen `nginx:1.29`. La imagen es la base. El contenedor es la ejecución.
+
+A esa separación entre lo de dentro y lo de fuera la llamamos
+**aislamiento**. Es la segunda palabra útil: cada contenedor trabaja en su
+espacio, sin mezclar sus archivos con los de tu equipo ni con los de otro
+contenedor.
+
+<Callout variant="info" title="Imagen y contenedor no son lo mismo">
+Descargar una imagen no ejecuta nada. Solo deja la base disponible. El
+programa solo funciona cuando creas un contenedor a partir de esa base.
+Eliminar el contenedor tampoco elimina la imagen: la base sigue disponible
+para la próxima vez.
+</Callout>
+
+## El programa que hace el trabajo
+
+Alguien tiene que preparar ese espacio separado y ponerlo en marcha. Ese
+trabajo lo hace un programa que funciona en segundo plano en tu equipo.
+
+A ese programa lo llamamos **motor**. En la documentación también aparece
+como `daemon`. Son dos nombres para lo mismo: el programa de fondo que hace
+el trabajo cuando pides un contenedor.
+
+No necesitas saber cómo trabaja por dentro. Basta con esta idea: tú pides,
+el motor prepara y ejecuta.
+
+## Contenedores frente a máquinas virtuales
+
+Una máquina virtual es un equipo completo fingido dentro de tu equipo. Trae
+su propio sistema y necesita una parte grande de memoria y disco. Arranca
+como arranca un equipo: despacio.
+
+Un contenedor no finge un equipo completo. Usa lo esencial del sistema de
+tu equipo y separa solo lo necesario: sus programas, sus archivos y sus
+conexiones. Por eso arranca en segundos y ocupa mucho menos espacio.
+
+| Pregunta                | Máquina virtual                              | Contenedor                                   |
+| ----------------------- | -------------------------------------------- | -------------------------------------------- |
+| Qué lleva dentro        | Un sistema propio completo                   | Solo el programa y lo que necesita           |
+| Qué usa de tu equipo    | El equipo físico, a través de un sistema propio | Lo esencial del sistema de tu equipo      |
+| Arranque y tamaño       | Lento y pesado, del orden de gigabytes       | Rápido y liviano, del orden de megabytes     |
+
+<Callout variant="warning" title="Aislamiento útil, no total">
+La separación de un contenedor ayuda a ordenar programas y evitar
+conflictos. No sustituye el cuidado del equipo. Mantén tu sistema
+actualizado y publica solo lo necesario cuando llegues a esas lecciones.
+</Callout>
+
+## Lo que Docker no es
+
+Docker no es una máquina virtual. No trae un sistema propio ni finge
+hardware. Comparte lo esencial de tu equipo y separa programas.
+
+Docker tampoco es solo un instalador. Un instalador deja programas y cambios
+en tu equipo. Docker sí se instala en tu equipo, pero los programas que
+ejecuta no: deja una base cerrada y ejecuta cada programa en su
+espacio, sin instalar las herramientas de ese programa en tu equipo.
+Por ejemplo, al ejecutar Nginx con Docker no instalas Nginx: vive
+dentro del contenedor y tu equipo queda intacto.
+
+## Lo esencial en tres líneas
+
+```text
+Imagen (base) ──puesta en marcha──▶ Contenedor (ejecución) ──mismo resultado──▶ otro equipo
+```
+
+- La imagen es la base. No ejecuta nada por sí sola.
+- El contenedor es la ejecución aislada de esa base.
+- El motor es el programa de fondo que prepara y ejecuta.
+
+Portabilidad y aislamiento resumen la promesa: lo mismo en otro equipo, sin
+mezclar con lo instalado.
+
+## Siguiente paso
+
+Ya viste la promesa en marcha en [Tu primer contenedor](./../examples/first-container/).
+Ahora toca entender la primera mitad a fondo: continúa con
+[Imágenes](./../images/) para ver qué contiene esa base que descargaste
+y ejecutaste.

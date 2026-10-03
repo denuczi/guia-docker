@@ -1,0 +1,103 @@
+---
+title: Buenas prácticas
+description: "Hábitos seguros para el uso diario de Docker: versiones fijas, privilegio mínimo, puertos justos y limpieza consciente."
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Las **buenas prácticas** son los hábitos que evitan los accidentes que ya
+conoces de las páginas anteriores: versiones que cambian solas, puertos
+abiertos de más, datos perdidos por borrar sin mirar. No son reglas
+decorativas: cada una previene un error concreto de esta guía.
+
+## Qué aprenderás
+
+- El resumen accionable de toda la ruta en seis hábitos.
+- Cómo aplicarlos en un ejemplo concreto y verificable.
+- Qué error evita cada hábito y dónde lo aprendiste.
+- Cómo seguir practicando sin romper nada.
+
+## Antes de empezar
+
+Necesitas haber recorrido la ruta: [Contenedores](./../containers/),
+[Uso básico](./../running-containers/) y [Limpieza](./../cleanup/). Esta página
+no introduce comandos nuevos salvo donde se indica; ordena lo que ya sabes.
+
+## Los seis hábitos
+
+1. **Fija versiones siempre.** Usa etiquetas exactas (`nginx:1.29`,
+   `postgres:18-alpine`), nunca `latest` en ejemplos ni en producción. Las
+   etiquetas mutables cambian de contenido sin avisar.
+2. **Nombra tus contenedores.** `--name` hace legibles `ps`, `logs`, `stop` y
+   `rm`. Los nombres aleatorios vuelven cada comando posterior más difícil.
+3. **Publica solo los puertos necesarios.** `-p` expone hacia tu equipo: un
+   servidor web lo necesita, una base de datos interna normalmente no.
+4. **Guarda los datos importantes en volúmenes.** Todo lo que viva solo en la
+   capa escribible se pierde con `docker rm`. Los volúmenes sobreviven al
+   contenedor.
+5. **No guardes secretos en imágenes.** Contraseñas y claves van como variables
+   de entorno o archivos montados, nunca escritas en el `Dockerfile` ni en
+   capas de la imagen.
+6. **Inspecciona antes de borrar.** El orden es `docker ps -a`, logs,
+   configuración y recién después el remedio. La limpieza empieza midiendo con
+   `docker system df`, nunca podando a ciegas.
+
+<Callout variant="info" title="El aislamiento no es total">
+Los contenedores aíslan procesos, filesystem y red, pero comparten el núcleo
+del anfitrión. No sustituyen la seguridad del equipo: ejecuta sin privilegios
+de más, actualiza las imágenes base y revisa dependencias con regularidad.
+</Callout>
+
+## Aplica los hábitos en un ejemplo
+
+Un contenedor bien creado reúne varios hábitos a la vez: versión fija, nombre
+explícito y un solo puerto publicado.
+
+```bash title="terminal"
+docker run -d --name web -p 8080:80 nginx:1.29
+```
+
+```bash title="terminal"
+docker ps
+```
+
+```bash title="terminal"
+docker images
+```
+
+## Resultado esperado
+
+`docker ps` confirma el contenedor en ejecución con su puerto, y `docker images`
+confirma la versión fija disponible en local:
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS         PORTS                  NAMES
+a1b2c3d4e5f6   nginx:1.29   Up 5 seconds   0.0.0.0:8080->80/tcp   web
+```
+
+Relee el comando y marca cada hábito: etiqueta exacta en lugar de `latest`,
+nombre legible en lugar de aleatorio, un solo puerto publicado. Cuando termines
+de practicar, detén y elimina en dos pasos, como aprendiste en
+[Eliminar contenedores](./../removing-containers/):
+
+```bash title="terminal"
+docker stop web
+```
+
+```bash title="terminal"
+docker rm web
+```
+
+## Error común
+
+Aplicar un solo hábito y descuidar el resto: fijar la versión pero publicar el
+puerto de la base de datos, o nombrar todo pero guardar datos en la capa
+escribible. Las buenas prácticas funcionan en conjunto; repasa la lista ante
+cada contenedor nuevo hasta que salga sola.
+
+## Siguiente paso
+
+Usa [Solución de problemas](./../troubleshooting/) como referencia diaria: su
+orden fijo de investigación es el séptimo hábito. Y vuelve a
+[Docker Compose](./../compose/) para aplicar estos hábitos a sistemas de varios
+servicios.

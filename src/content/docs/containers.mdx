@@ -1,0 +1,197 @@
+---
+title: Contenedores
+description: Qué es un contenedor, qué atributos lo identifican y en qué estados puede estar.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Un **contenedor** es una imagen puesta en marcha: la instancia en ejecución
+o detenida de una plantilla, con nombre, estado y puertos propios.
+
+Si seguiste [Tu primer contenedor](./examples/first-container/), ya creaste
+uno llamado `web` a partir de `nginx:1.29`. Esta página nombra lo que ya
+viste y explica qué es cada cosa. Si lo eliminaste al cerrar el tutorial,
+recupéralo con la orden de esa misma página: el resto parte de que `web`
+está en marcha. El manejo diario (crear, consultar, detener y eliminar) lo
+practicarás en las lecciones siguientes, empezando por
+[Ejecutar contenedores](./../running-containers/).
+
+## El contenedor que ya tienes en marcha
+
+Con `web` en marcha, esta orden muestra lo que existe ahora mismo:
+
+```bash title="terminal"
+docker ps
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS         PORTS                  NAMES
+a1b2c3d4e5f6   nginx:1.29   Up 5 seconds   0.0.0.0:8080->80/tcp   web
+```
+
+Cada fila es un contenedor vivo. Léela como los atributos de ese ser en
+marcha:
+
+| Columna        | Atributo del contenedor                  |
+| -------------- | ---------------------------------------- |
+| `NAMES`        | Cómo se llama (`web`)                    |
+| `IMAGE`        | De qué plantilla nació (`nginx:1.29`)    |
+| `STATUS`       | En qué estado está (aquí, recién creado) |
+| `PORTS`        | Qué puerto de tu equipo lleva a su interior |
+| `CONTAINER ID` | El identificador único que Docker le asignó |
+
+Las cuatro primeras columnas ya las leíste en el tutorial. El identificador
+lo asigna Docker solo y sirve para señalar a ese contenedor exacto cuando
+el nombre no basta.
+
+## Cada contenedor tiene un nombre único
+
+El nombre es cómo hablas de tu contenedor en las órdenes siguientes:
+`docker logs web`, `docker stop web`. Con `--name web` lo eliges tú; sin
+esa opción, Docker genera uno aleatorio y esas órdenes se vuelven difíciles
+de leer.
+
+<Callout variant="tip" title="Nombra tus contenedores de práctica">
+Un nombre explícito como `web` hace legible cada orden posterior. Los
+nombres generados solo complican la lectura sin aportar nada.
+</Callout>
+
+Los nombres son únicos por equipo: no puede haber dos contenedores llamados
+`web` a la vez, aunque uno esté detenido. Si `docker run --name web`
+responde que el nombre ya está en uso, un contenedor detenido conserva ese
+nombre. Lo verás con `docker ps -a`, y su eliminación se enseña en
+[Eliminar contenedores](./../removing-containers/).
+
+## Cada contenedor está en un estado
+
+A grandes rasgos, un contenedor está en marcha o detenido. `docker ps`
+muestra solo los que están en marcha; `docker ps -a` muestra todos,
+incluidos los detenidos:
+
+```bash title="terminal"
+docker ps -a
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS                   PORTS     NAMES
+a1b2c3d4e5f6   nginx:1.29   Exited (0) 2 minutes ago             web
+```
+
+Esa fila sigue ahí aunque nada se esté ejecutando: el contenedor existe
+apagado, conserva su nombre y su configuración, y ya no publica puertos.
+Esa es la prueba de que un contenedor sobrevive a su propia ejecución.
+
+El número entre paréntesis es el código de salida del proceso: `0`
+significa que terminó sin errores y otro número señala un problema que se
+lee en los logs. No necesitas más detalle por ahora: leer el estado a fondo
+se practica en [Ver y consultar contenedores](./../inspecting-containers/).
+
+## Cada contenedor nace de una imagen
+
+La columna `IMAGE` dice de qué plantilla nació el contenedor. La plantilla
+queda intacta en tu disco: crear, detener o eliminar contenedores no la
+modifica ni la borra. Por eso son objetos distintos con ciclos distintos:
+la imagen es la base quieta que ya conoces de
+[Imágenes](./../images/) y el contenedor es su ejecución.
+
+## Los puertos conectan tu equipo con el interior
+
+La columna `PORTS` ya la leíste en el tutorial:
+`0.0.0.0:8080->80/tcp` significa que el puerto `8080` de tu equipo lleva al
+puerto `80` del interior. La izquierda es tu equipo, la derecha es el
+contenedor y la flecha marca la dirección.
+
+Ahora la pregunta importante: ¿quién decide cada número?
+
+- El puerto **interior** (`80`) lo define el programa que corre adentro,
+  en su propia configuración (no en Docker). Nginx atiende en el `80` en
+  este ejemplo, pero cada programa usa el suyo y muchos permiten
+  configurarlo; la imagen documenta en qué puerto atiende.
+- El puerto **exterior** (`8080`) lo eliges tú en la orden `-p`, con una
+  sola condición: que esté libre en tu equipo. La misma orden con otro
+  puerto exterior:
+
+```bash title="terminal"
+docker run -d --name web3 -p 3000:80 nginx:1.29
+```
+
+Aquí el interior sigue siendo el `80` de Nginx, pero desde afuera entrarías
+por `http://localhost:3000`. Podría ser `8081`, `3000` o cualquier otro
+disponible. (Si lo ejecutas, tendrás un contenedor extra llamado `web3`:
+en [Eliminar contenedores](./../removing-containers/) verás cómo quitarlo.)
+
+Por eso no estás obligado a usar el `80` en tu aplicación: el `80` es del
+interior y no se toca; desde afuera entras por el puerto que hayas elegido
+tú. En la sección siguiente verás dos contenedores del mismo Nginx
+entrando por `8080` y por `8081`.
+
+Cómo elegir y publicar puertos se practica en
+[Ejecutar contenedores](./../running-containers/).
+
+## Una imagen crea varios contenedores
+
+Una plantilla sirve para muchos: nada impide crear un segundo contenedor
+desde la misma imagen, con otro nombre y otro puerto de tu equipo:
+
+```bash title="terminal"
+docker run -d --name web2 -p 8081:80 nginx:1.29
+```
+
+```bash title="terminal"
+docker ps
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS          PORTS                  NAMES
+a1b2c3d4e5f6   nginx:1.29   Up 10 minutes   0.0.0.0:8080->80/tcp   web
+f6e5d4c3b2a1   nginx:1.29   Up 5 seconds    0.0.0.0:8081->80/tcp   web2
+```
+
+Dos filas, misma imagen, dos espacios aislados: cada uno tiene su propio
+nombre, su propio estado y su propio puerto. Abrir `http://localhost:8081`
+muestra la misma página servida por otro contenedor.
+
+Para dejar el escenario limpio, retira el segundo. El porqué de cada paso
+lo verás en su lección correspondiente:
+
+```bash title="terminal"
+docker stop web2
+```
+
+```bash title="terminal"
+docker rm web2
+```
+
+## Lo que escribe el contenedor vive con él
+
+Sobre las capas de solo lectura de la imagen, Docker agrega una capa fina
+escribible donde el programa trabaja. A modo de intuición basta con esto:
+lo que el programa guarda solo ahí desaparece con el contenedor.
+
+- Detener (`docker stop`) apaga el contenedor y conserva su espacio. Se
+  practica en [Detener, iniciar y reiniciar](./../stopping-containers/).
+- Eliminar (`docker rm`) borra ese espacio del todo, pero nunca la imagen.
+  Se practica en [Eliminar contenedores](./../removing-containers/).
+
+Si los datos deben sobrevivir al contenedor, deben guardarse fuera de él,
+en un almacenamiento separado. A ese almacenamiento lo llamamos volumen y
+tiene su propia lección: [Volúmenes](./../volumes/).
+
+## Lo esencial en tres líneas
+
+```text
+Imagen (nginx:1.29) ──instancia──▶ Contenedor (web): nombre + estado + puertos
+```
+
+- El contenedor es la ejecución: nace de una imagen y tiene nombre, estado
+  y puertos propios.
+- En marcha sirve; detenido existe apagado; eliminado desaparece, y la
+  imagen sobrevive siempre.
+- Una imagen crea tantos contenedores como necesites; lo que vive solo
+  dentro se pierde con él.
+
+## Siguiente paso
+
+Continúa con [Registros de imágenes](./../registries/) para descubrir de
+dónde vienen las plantillas: qué es Docker Hub y cómo verificar lo que
+descargas antes de ponerlo en marcha.

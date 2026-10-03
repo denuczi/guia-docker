@@ -1,0 +1,172 @@
+---
+title: Imágenes
+description: Qué es una imagen de Docker, cómo ver las que tienes en tu equipo, cómo traer una sin ejecutarla y cómo eliminarla sin romper nada.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Ya ejecutaste `nginx:1.29` y viste una página en el navegador. Antes de
+arrancar, Docker mostró unas líneas de descarga. Esa descarga dejó algo
+guardado en tu equipo: la base a partir de la cual se creó el contenedor.
+
+A esa base la llamamos **imagen**. No ejecuta nada por sí sola. Solo deja
+el contenido listo para usar.
+
+Esta lección responde tres preguntas sobre esa base: qué es, dónde quedó
+guardada y cómo ordenar las que tienes.
+
+## Qué verás
+
+- Dónde están las imágenes que ya descargaste.
+- Cómo leer un nombre como `nginx:1.29`.
+- Cómo traer una imagen sin ejecutarla.
+- Cómo eliminar una imagen sin romper un contenedor.
+- Por qué las descargas comparten espacio entre sí.
+
+## Las imágenes que ya tienes
+
+Todo lo que descargaste vive en tu equipo. Para verlo:
+
+```bash title="terminal"
+docker images
+```
+
+Esta orden muestra solo las imágenes locales. No muestra lo que existe en
+internet. Solo lo que ya tienes guardado.
+
+```text title="resultado" frame="terminal"
+REPOSITORY   TAG    IMAGE ID       CREATED      SIZE
+nginx        1.29   e4f5a6b7c8d9   4 weeks ago  192MB
+```
+
+Cada fila es una base disponible. Concéntrate en estas columnas:
+
+- `REPOSITORY`: el nombre de la base.
+- `TAG`: la versión concreta de esa base.
+- `SIZE`: cuánto espacio ocupa en tu equipo.
+
+Busca en la tabla la fila de `nginx`: cada fila es una base distinta y es
+normal que tengas varias. Si la fila de `nginx` no aparece, esa base no
+está en local. Revisa el nombre exacto y tráela de nuevo con la orden
+de la sección siguiente.
+
+## Cómo leer un nombre con etiqueta
+
+`nginx:1.29` se lee en dos partes:
+
+```text
+nginx:1.29
+│      └── etiqueta (versión 1.29)
+└── nombre de la base
+```
+
+`nginx` nombra el programa empaquetado, el que muestra páginas web.
+`1.29` es la etiqueta e indica qué versión exacta de esa base.
+
+La etiqueta `latest` significa "la más reciente", pero cambia de contenido
+con el tiempo. Lo que hoy es `latest` mañana puede ser otra versión. Por
+eso es de buena práctica fijar la versión: `1.29` hoy es `1.29` mañana.
+
+Una etiqueta nombra una versión; el digest identifica el contenido exacto bit a bit.
+
+<Callout variant="info" title="Fija la versión en tus prácticas">
+Usa siempre una etiqueta concreta como `nginx:1.29` en lugar de `nginx` a
+secas o `nginx:latest`. Así obtienes hoy y mañana exactamente lo mismo.
+Reserva `latest` para pruebas desechables.
+</Callout>
+
+## Traer una imagen sin ejecutarla
+
+```bash title="terminal"
+docker pull nginx:1.29
+```
+
+Esta orden descarga la base a tu equipo y la deja disponible. No ejecuta
+nada. Ningún servidor se inicia y ningún puerto se abre.
+
+Si `docker run` ya descarga solo, ¿cuándo hace falta esta orden? La
+diferencia está en lo que hace cada una después de descargar:
+
+- `docker run` descarga **y ejecuta**: crea un contenedor y lo pone en marcha.
+- `docker pull` **solo descarga**: deja la base lista sin crear nada.
+
+Y hay un detalle importante: `docker run` reutiliza la imagen que ya
+tienes sin comprobar si existe una versión más nueva. `docker pull`, en
+cambio, trae siempre lo último publicado con esa etiqueta.
+
+Por eso `docker pull` sirve para:
+
+- Dejar la base lista antes de una práctica, sin crear contenedores todavía.
+- Comprobar que esa versión exacta existe, sin efectos secundarios.
+- Actualizar una imagen que ya tenías, por ejemplo `nginx:latest` cuando
+  se publicó una versión nueva.
+
+De dónde viene esa descarga, el registro que guarda y distribuye estas
+bases, lo verás en [Registros de imágenes](./../registries/).
+
+## Eliminar una imagen que ya no usas
+
+```bash title="terminal"
+docker image rm nginx:1.29
+```
+
+`docker rmi` es el atajo de la misma orden.
+
+Esto borra la base de tu equipo. Pero hay algo que no borra: los
+contenedores creados a partir de ella. Si existe un contenedor, en marcha
+o detenido, que usa esa imagen, Docker bloquea la eliminación.
+
+<Callout variant="warning" title="Diagnostica antes de eliminar">
+Si la orden falla porque la imagen está en uso, no fuerces nada. Lista
+primero los contenedores con `docker ps -a`, decide qué hacer con cada
+uno que dependa de esa imagen y reintenta después.
+</Callout>
+
+Verifica con `docker images` que la fila desapareció. Si la necesitas de
+nuevo, tráela otra vez con `docker pull`. Una base se puede descargar
+tantas veces como quieras.
+
+## Por qué las descargas comparten espacio
+
+Una imagen no es un archivo único. Es una pila de capas de solo lectura,
+una encima de otra. Cada capa guarda una parte del contenido. Cuando creas
+un contenedor, Docker agrega arriba una capa fina escribible donde el
+programa trabaja.
+
+```text
+capa escribible (contenedor) │ solo al ejecutar; aquí escribe el programa
+────────────────────────────┤
+capa de solo lectura        │
+────────────────────────────┤── la imagen: no cambia nunca
+capa de solo lectura        │
+```
+
+Por eso dos imágenes que comparten capas no ocupan el doble de espacio.
+Y por eso una descarga puede continuar donde quedó: las capas que ya
+tienes no se descargan de nuevo.
+
+Cómo se construyen esas capas, paso a paso, lo verás en
+[Dockerfile](./../dockerfile/).
+
+## Error común
+
+Creer que `docker images` muestra todo lo disponible en internet. Solo
+muestra lo que ya está en tu equipo. Si buscas algo que aún no
+descargaste, no aparecerá en esa tabla aunque exista. Primero tráelo con
+`docker pull` y después verifícalo en local.
+
+## Lo esencial en tres líneas
+
+```text
+Registro ──descarga──▶ Imagen (base local) ──puesta en marcha──▶ Contenedor (ejecución)
+```
+
+- La imagen es la base. Vive en tu equipo y no ejecuta nada.
+- La etiqueta fija la versión. `1.29` siempre es `1.29`; `latest` cambia.
+- Las capas se comparten. Por eso volver a descargar suele costar menos.
+
+## Siguiente paso
+
+Continúa con [Contenedores](./../containers/) para poner esa base en
+marcha: crear el espacio en ejecución, comprobarlo y eliminarlo sin perder
+la plantilla.

@@ -1,0 +1,76 @@
+---
+title: Node.js
+description: Cómo contenerizar Node.js con node:26-alpine, por qué ejecutar como USER node y por qué usar CMD en forma exec.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Node.js tiene imagen oficial `node`. Esta página usa `node:26-alpine`: nombre
+`node`, versión mayor `26`, variante base `alpine`.
+
+## Qué aprenderás
+
+- Cómo leer `node:26-alpine` y por qué `node:alpine-26` no existe.
+- Cuándo Alpine ayuda y cuándo complica (dependencias nativas, libc, tooling).
+- Cómo aplicar privilegio mínimo con `USER node`.
+- Por qué `CMD ["node", "server.js"]` en forma exec es preferible.
+
+## La etiqueta, parte por parte
+
+`node` es el nombre oficial. `26` selecciona la versión mayor. `alpine` es la
+variante de base mínima. No afirmes que Alpine es automáticamente mejor:
+dependencias nativas, compatibilidad libc, herramientas de compilación y
+arquitectura pueden hacer preferible otra variante.
+
+## Dockerfile con caché y sin root
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile
+
+COPY . .
+RUN chown -R node:node /app
+USER node
+CMD ["node", "server.js"]
+```
+
+Los manifiestos se copian antes que el código para conservar la caché. `chown`
+deja los archivos en manos del usuario `node` y `USER node` ejecuta la app sin
+root: un proceso de aplicación normalmente no necesita ser root.
+
+<Callout variant="info" title="Propiedad de archivos">
+Cambiar a `USER node` sin ajustar propiedad rompe escrituras. Por eso el
+`chown` va antes del cambio de usuario. Si tu app necesita otros UID/GID,
+define una estrategia propia en lugar de copiar esta línea a ciegas.
+</Callout>
+
+La forma exec `["node", "server.js"]` ejecuta el proceso directamente, sin shell
+intermedia: señales y `stop` llegan al proceso correcto.
+
+## Build y ejecución
+
+```bash title="terminal"
+docker build -t my-node-app:1.0 .
+```
+
+```bash title="terminal"
+docker run -d --name my-node-app -p 3000:3000 my-node-app:1.0
+```
+
+La etapa de build puede necesitar `devDependencies`; la imagen final de runtime
+debe contener solo lo necesario para ejecutar. No uses `--prod` a ciegas en una
+etapa que todavía compila.
+
+## Error común
+
+Copiar `node_modules` del host dentro de la imagen Linux. Los binarios nativos
+del host (otro SO, otra arquitectura) fallan dentro del contenedor. Deja que la
+imagen instale sus propias dependencias con el lockfile.
+
+## Siguiente paso
+
+Continúa con [Laravel](./../laravel/) para ver por qué PHP no tiene un
+equivalente directo de `node:26-alpine` y cómo razonar su base.

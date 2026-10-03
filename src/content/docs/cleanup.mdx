@@ -1,0 +1,60 @@
+---
+title: Limpieza
+description: Qué significa sin uso en Docker, cómo inspeccionar antes de borrar y por qué prune con volúmenes puede destruir datos.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Docker acumula imágenes, contenedores detenidos, redes y volúmenes. Limpiar es
+seguro solo cuando sabes qué significa **sin uso** para cada tipo.
+
+## Qué aprenderás
+
+- Cómo medir el uso de disco antes de borrar.
+- Qué borra `prune` y qué conserva.
+- Por qué `--volumes` es peligroso y cuándo evitarlo.
+- Qué se puede borrar y qué debe quedar.
+
+## Mide antes de borrar
+
+```bash title="terminal"
+docker system df
+```
+
+El resultado desglosa imágenes, contenedores, volúmenes y caché de build con su
+tamaño y su estado de uso. Limpia a partir de ese informe, no a ciegas.
+
+## Poda básica
+
+```bash title="terminal"
+docker system prune
+```
+
+Elimina contenedores detenidos, redes no usadas e imágenes colgadas
+(sin etiqueta ni contenedor). Pide confirmación: lee qué va a borrar antes de
+aceptar.
+
+<Callout variant="danger" title="prune con volúmenes destruye persistencia">
+`docker system prune --volumes` agrega los volúmenes sin contenedor al borrado.
+Eso incluye datos de bases de datos que simplemente están detenidas. Nunca lo
+presentes como limpieza de rutina: explica el efecto destructivo antes del
+comando y prefiere borrar volúmenes nombrados uno por uno tras verificar.
+</Callout>
+
+## Qué conservar
+
+Conserva volúmenes con datos que necesites, imágenes fijadas que uses y redes
+de composiciones activas. Borra contenedores detenidos que ya inspeccionaste,
+imágenes viejas sin referencia y caché que `docker system df` marque como
+reclamable.
+
+## Error común
+
+Ejecutar la limpieza más fuerte "para empezar de cero" y perder la base de
+datos local. Inspecciona primero (`ps -a`, `volume ls`, `system df`), respalda
+lo importante y borra por nombre en lugar de podar todo.
+
+## Siguiente paso
+
+Termina con [Solución de problemas](./../troubleshooting/) para investigar
+en orden fijo antes de cualquier remedio destructivo.

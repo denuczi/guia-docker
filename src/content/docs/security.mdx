@@ -1,0 +1,76 @@
+---
+title: Seguridad
+description: Privilegio mínimo, secretos fuera de las imágenes, puertos mínimos, imágenes confiables y parches regulares sin exagerar el aislamiento.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+La seguridad en Docker es una lista corta aplicada siempre: poco privilegio,
+poco contexto, pocos puertos, imágenes conocidas y secretos fuera de la imagen.
+
+## Qué aprenderás
+
+- Cómo aplicar privilegio mínimo a procesos y filesystems.
+- Dónde van los secretos y dónde nunca van.
+- Cómo elegir puertos e imágenes base sin exagerar ni minimizar.
+- Qué mantenimiento exige una imagen en el tiempo.
+
+## Privilegio mínimo
+
+Ejecuta la aplicación sin root cuando sea posible (`USER node` en Node;
+usuario de aplicación razonado en PHP). Reduce capacidades y permisos de
+escritura cuando aplique. Un proceso de app normalmente no necesita
+administrar el sistema.
+
+## Secretos fuera de la imagen
+
+Nunca hornees `.env`, claves ni tokens en la imagen con `ENV` o `COPY`. Un
+secreto en una capa queda en el historial para siempre. Pasa configuración
+sensible en runtime (variables de entorno del orquestador, archivos montados,
+gestor de secretos) y exclúyela del contexto:
+
+```text title=".dockerignore"
+.env*
+.git
+.vscode
+node_modules
+vendor
+.DS_Store
+coverage
+```
+
+## Puertos e imágenes
+
+Publica solo los puertos que el anfitrión necesita. Evita exponer bases de
+datos. Elige bases conocidas, fija versiones (`nginx:1.29`,
+`postgres:18-alpine`), revisa dependencias y publica parches con regularidad.
+Las imágenes pequeñas ayudan cuando son prácticas, no como dogma.
+
+<Callout variant="warning" title="Destructivo antes que nada">
+Antes de cualquier limpieza con volúmenes, lee [Limpieza](./../cleanup/).
+`docker system prune --volumes` no es un "refresco inofensivo": puede destruir
+datos persistentes.
+</Callout>
+
+## Lo que Docker no es
+
+<Callout variant="info" title="Aislamiento útil, no total">
+Los contenedores aíslan procesos, filesystem y red sobre el núcleo compartido.
+No sustituyen la seguridad del anfitrión: parches, firewall, usuarios y
+permisos del host siguen siendo obligatorios. No exageres el aislamiento.
+</Callout>
+
+Tampoco llames "más seguro" a una herramienta sin base concreta y actual:
+enseña prácticas verificables (lockfiles, procedencia, revisión de
+vulnerabilidades, dependencias mínimas) en lugar de eslóganes.
+
+## Error común
+
+Fijar `latest` en producción "para estar siempre actualizado". Recibes cambios
+sin probar y pierdes reproducibilidad. Fija versiones y actualiza por decisión,
+no por accidente.
+
+## Siguiente paso
+
+Continúa con [Limpieza](./../cleanup/) para recuperar espacio sin borrar lo
+que importa.

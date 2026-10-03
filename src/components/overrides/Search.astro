@@ -1,0 +1,34 @@
+---
+// Search override: stock Starlight search, scoped so ClientRouter cannot
+// break it (registered via `components.Search` in astro.config.mjs;
+// supported by the installed Starlight 0.42.5 per its ComponentUserConfig
+// schema).
+//
+// Root cause it fixes: stock `Search` boots PagefindUI exactly once on
+// `window DOMContentLoaded`. After an Astro ClientRouter swap that event
+// never fires again, so the freshly swapped `<site-search>` wires its dialog
+// (constructor) but never boots PagefindUI — the dialog opens yet finds
+// nothing. Re-booting from project code is not an option (Pagefind's UI
+// bundle is Starlight's private dependency, not a project pin).
+//
+// Fix: `transition:persist` on this wrapper carries the already-booted
+// `<site-search>` subtree (dialog wiring + live PagefindUI instance) across
+// every client-side swap, so search keeps working with zero
+// re-initialization. Every route renders this override (docs pages and the
+// 404 page alike), so the persisted node always has a match. Full page loads
+// boot exactly the stock way. No new island, no extra JavaScript.
+import DefaultSearch from '@astrojs/starlight/components/Search.astro';
+---
+
+<div class="search-persist" transition:persist="starlight-search">
+	<DefaultSearch />
+</div>
+
+<style>
+	/* Layout-neutral wrapper: the header's flex layout must see the search
+	 * button exactly as stock does (`site-search` is `display: contents`),
+	 * so this scoping div is transparent to layout as well. */
+	.search-persist {
+		display: contents;
+	}
+</style>

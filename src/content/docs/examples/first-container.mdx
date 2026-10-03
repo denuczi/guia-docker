@@ -1,0 +1,303 @@
+---
+title: Tu primer contenedor
+description: Pon en marcha una página web con una sola orden, entiende qué hizo Docker y limpia sin perder la plantilla.
+---
+
+import Callout from '../../../components/docs/Callout.astro';
+
+Quieres ver una página web funcionando sin instalar un servidor, sin editar
+archivos de configuración y sin dejar restos en tu equipo.
+
+Vas a conseguir eso en pocos minutos: una orden para mostrar la página, una
+comprobación en el navegador y una limpieza segura.
+
+## Qué vas a conseguir
+
+- Mostrar una página de bienvenida en `http://localhost:8080`.
+- Saber qué orden la puso en marcha y qué significa cada parte.
+- Distinguir entre detener algo y eliminarlo del todo.
+
+## Antes de empezar
+
+Necesitas Docker instalado y en marcha. Compruébalo con esta orden:
+
+```bash title="terminal"
+docker version
+```
+
+Si ves información de versión sin errores, puedes continuar. Si alguna parte
+no responde, inicia Docker Desktop o el servicio de Docker de tu sistema
+antes de seguir.
+
+Si aún no instalaste Docker, sigue la guía de
+[macOS](./../install-macos/), [Windows](./../install-windows/) o
+[Linux](./../install-linux/) según tu equipo.
+
+## Hazlo: muestra la página
+
+Vas a mostrar una página de prueba con una sola orden. Cópiala tal como está:
+
+```bash title="terminal"
+docker run -d --name web -p 8080:80 nginx:1.29
+```
+
+Si es la primera vez que usas ese nombre con esa versión, verás unas líneas
+de descarga antes del arranque. Es normal: Docker trae primero la plantilla
+y después la pone en marcha. Solo ocurre una vez.
+
+## Observa: comprueba que funciona
+
+Abre `http://localhost:8080` en el navegador. Verás la página de bienvenida
+de `nginx`.
+
+Después confirma que hay algo en marcha con esta orden:
+
+```bash title="terminal"
+docker ps
+```
+
+Verás una fila por cada programa en marcha. La tuya se parece a esta:
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS         PORTS                  NAMES
+a1b2c3d4e5f6   nginx:1.29   Up 5 seconds   0.0.0.0:8080->80/tcp   web
+```
+
+Concéntrate en estas cuatro columnas por ahora:
+
+- `IMAGE`: la plantilla que se está ejecutando.
+- `STATUS`: desde cuándo está en marcha.
+- `PORTS`: qué puerto de tu equipo lleva a qué puerto interior.
+- `NAMES`: el nombre que diste para reconocerlo.
+
+Si la tabla está vacía, nada está en marcha. No borres nada todavía:
+primero revisa la sección de errores de esta misma página.
+
+<Callout variant="info" title="Una orden crea y arranca a la vez">
+`docker run` hace dos cosas en un solo paso: prepara un espacio aislado y lo
+pone en marcha. Por eso después de `docker run` ya puedes abrir el navegador.
+</Callout>
+
+## Entiende: qué significa cada parte
+
+Vuelve a mirar la orden. Cada fragmento tiene un trabajo distinto.
+
+### `docker run`
+
+Prepara un espacio aislado y lo pone en marcha.
+
+Qué observar: después de ejecutarla, el navegador muestra la página.
+
+Cómo verificarlo: `docker ps` muestra una fila nueva.
+
+A ese espacio aislado en marcha lo llamamos **contenedor**.
+
+### `-d`
+
+Libera la terminal y deja el programa funcionando en segundo plano.
+
+Qué observar: recuperas la terminal inmediatamente después de pulsar Enter.
+
+Cómo verificarlo: `docker ps` muestra el estado `Up`.
+
+Sin `-d`, la terminal quedaría ocupada mostrando los mensajes del programa.
+
+### `--name web`
+
+Da al espacio aislado un nombre legible: `web`.
+
+Qué observar: la columna `NAMES` muestra `web`.
+
+Cómo verificarlo: puedes usar ese nombre en las órdenes siguientes, por
+ejemplo `docker logs web`.
+
+<Callout variant="tip" title="Nombres explícitos">
+Sin `--name`, Docker genera un nombre aleatorio y las órdenes siguientes se
+vuelven difíciles de leer. Nombra siempre los contenedores de práctica.
+</Callout>
+
+### `-p 8080:80`
+
+Conecta un puerto de tu equipo con un puerto del interior.
+
+La dirección importa: la izquierda es tu equipo, la derecha es el interior.
+
+- `8080`: el puerto que abres en tu equipo.
+- `80`: el puerto donde el programa escucha dentro.
+
+Qué observar: el navegador abre `http://localhost:8080` y ve la página.
+
+Cómo verificarlo: la columna `PORTS` muestra `0.0.0.0:8080->80/tcp`.
+La flecha indica la dirección: de tu equipo hacia el interior.
+
+### `nginx:1.29`
+
+Indica qué plantilla usar y en qué versión.
+
+- `nginx`: el programa que muestra páginas web.
+- `1.29`: la versión exacta. Fijar la versión evita sorpresas cuando la
+plantilla cambia.
+
+Qué observar: la columna `IMAGE` muestra `nginx:1.29`.
+
+Cómo verificarlo: `docker images` lista las plantillas que ya tienes en
+tu equipo.
+
+A esa plantilla la llamamos **imagen**.
+
+## Mira dentro: qué está haciendo
+
+El contenedor escribe mensajes mientras trabaja. Léelos con esta orden:
+
+```bash title="terminal"
+docker logs web
+```
+
+Verás líneas con la hora de arranque y con cada visita que haces desde el
+navegador. Recarga la página y vuelve a ejecutar la orden: aparecen líneas
+nuevas.
+
+Los mensajes informativos son normales. Solo indican un problema si ves
+palabras como `error` o `failed`, o si la página no abre.
+
+## Dos palabras que ya puedes usar
+
+Hasta aquí ya viste la diferencia en la práctica. Ahora ponle nombre:
+
+| Palabra      | Qué es                                        | Qué pasa si la quitas               |
+| ------------ | --------------------------------------------- | ----------------------------------- |
+| Imagen       | La plantilla, por ejemplo `nginx:1.29`        | Dejas de tener esa versión a mano   |
+| Contenedor   | La ejecución aislada, por ejemplo `web`        | Desaparece ese espacio en marcha    |
+
+Esto responde dos confusiones frecuentes:
+
+- Descargar la plantilla no ejecuta nada. Solo la deja disponible.
+- Eliminar el espacio en marcha no elimina la plantilla. La plantilla sigue
+disponible para la próxima práctica.
+
+## Si algo no sale como esperas
+
+### La página no abre y el puerto parece ocupado
+
+Qué pasó: la orden termina con un mensaje parecido a `address already in use`
+o el navegador muestra una página distinta de la de `nginx`.
+
+Por qué ocurre: el puerto `8080` de tu equipo ya está en uso por otro
+programa o por otro contenedor.
+
+Cómo comprobarlo: busca qué está ocupando ese puerto en la columna `PORTS`:
+
+```bash title="terminal"
+docker ps
+```
+
+Si otra fila usa `8080`, ese es el conflicto.
+
+Solución segura: usa otro puerto libre de tu equipo, por ejemplo `8081`,
+con un nombre distinto:
+
+```bash title="terminal"
+docker run -d --name web2 -p 8081:80 nginx:1.29
+```
+
+Después abre `http://localhost:8081`. No detengas programas que no
+reconoces para liberar el puerto.
+
+<Callout variant="warning" title="No liberes puertos a ciegas">
+Cambiar al puerto `8081` es seguro. Detener un programa desconocido solo
+porque usa `8080` puede interrumpir otra aplicación. Comprueba primero con
+`docker ps` si el conflicto viene de Docker.
+</Callout>
+
+### El nombre `web` ya está en uso
+
+Qué pasó: la orden termina con un mensaje parecido a
+`The container name "/web" is already in use`.
+
+Por qué ocurre: ya existe un contenedor llamado `web`, aunque esté detenido.
+Los contenedores detenidos siguen ocupando su nombre.
+
+Cómo comprobarlo: lista también los detenidos:
+
+```bash title="terminal"
+docker ps -a
+```
+
+Si ves `web` con estado `Exited`, ese es el origen del mensaje.
+`docker ps` muestra solo los que están en marcha.
+`docker ps -a` muestra también los detenidos.
+
+Solución segura: si ese contenedor detenido es tu práctica anterior,
+puedes volver a usarlo con `docker start web` o eliminarlo siguiendo la
+sección siguiente. Si no sabes qué es, inspecciónalo con `docker logs web`
+antes de eliminarlo.
+
+## Detener no es eliminar
+
+Detén el contenedor cuando termines de practicar:
+
+```bash title="terminal"
+docker stop web
+```
+
+Detener lo deja apagado, pero conserva su espacio y sus datos internos.
+Puedes volver a ponerlo en marcha con `docker start web` y comprobarlo
+con `docker ps`.
+
+Eliminar es distinto: borra ese espacio del todo. Lee con atención el aviso
+siguiente antes de ejecutar la orden, porque lo que estaba guardado solo
+dentro del contenedor se pierde y no se puede recuperar.
+
+<Callout variant="danger" title="Eliminar destruye los datos del contenedor">
+Este comando elimina el contenedor de forma permanente. Si los datos estaban
+únicamente en la capa escribible del contenedor y no en un volumen o bind mount,
+esos datos se perderán y no podrán recuperarse.
+</Callout>
+
+```bash title="terminal"
+docker rm web
+```
+
+Eliminar el contenedor **no** elimina la imagen `nginx:1.29`.
+Tampoco elimina los almacenamientos persistentes que estén conectados al
+contenedor. Solo elimina el espacio en marcha y lo que se guardó solo
+dentro de él.
+
+Verifica el resultado en dos pasos. Primero confirma que el nombre
+desapareció, incluidos los detenidos:
+
+```bash title="terminal"
+docker ps -a
+```
+
+Después confirma que la plantilla sigue disponible para la próxima práctica:
+
+```bash title="terminal"
+docker images
+```
+
+## Qué se conserva y qué se pierde
+
+Todo lo que un programa guarda solo dentro de su espacio aislado desaparece
+con `docker rm`.
+
+Si necesitas que los datos sobrevivan al contenedor, deben guardarse fuera
+de él, en un almacenamiento que Docker mantiene separado. A ese
+almacenamiento lo llamamos **volumen**. Esta lección no crea volúmenes:
+solo deja clara la regla para no perder datos por sorpresa.
+
+La imagen siempre sobrevive a `docker rm`. Por eso puedes crear otro
+contenedor igual cuando quieras sin descargar de nuevo.
+
+## Lo esencial en tres líneas
+
+```text
+Imagen (nginx:1.29) ──base──▶ Contenedor (web) ──puerto 8080──▶ Navegador
+```
+
+- La imagen es la base. No ejecuta nada por sí sola.
+- El contenedor ejecuta. Se crea y se arranca con `docker run`.
+- El puerto es el acceso. Conecta tu equipo con el interior.
+
+Continúa con [Contenedores](./../containers/) para recorrer el ciclo de vida
+completo: logs, inspección, reinicio y las diferencias entre detener y eliminar.

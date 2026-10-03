@@ -1,0 +1,381 @@
+---
+title: Dockerfile
+description: Cómo escribir un Dockerfile, qué es el contexto de build, cómo funciona la caché por capas y cómo reducir el contexto con .dockerignore.
+---
+
+import Callout from '../../components/docs/Callout.astro';
+
+Un **Dockerfile** es la receta para convertir tu programa en una imagen. Cada línea agrega algo a esa imagen. Cuando la receta está lista, la construyes con `docker build`, obtienes una imagen y la pones en marcha con `docker run`.
+
+Como viste en [Imágenes](./../images/), una imagen es una pila de capas de solo lectura. Este archivo define esas capas, una instrucción por capa. Aquí aprenderás a escribirlo línea por línea y a comprobar el resultado en tu equipo.
+
+## Dockerfile o Compose: qué resuelve cada uno
+
+Antes de escribir sintaxis, elige la herramienta correcta.
+
+Un Dockerfile responde a esta pregunta: ¿cómo empaqueto MI programa en UNA imagen? Es la receta de una sola imagen.
+
+Un archivo Compose responde a otra pregunta: ¿cómo ejecuto una aplicación de VARIOS servicios juntos, por ejemplo app más base de datos? Es la coordinación de un sistema completo.
+
+<Callout variant="tip" title="Regla de una línea">
+Si necesitas una imagen, escribes un Dockerfile. Si necesitas varios servicios coordinados, describes el conjunto en Compose.
+</Callout>
+
+Esta página construye una sola imagen. El detalle de servicios, redes y volúmenes coordinados queda para [Docker Compose](./../compose/).
+
+## El programa que vas a empaquetar
+
+Antes de la receta, prepara el proyecto. Tres aclaraciones:
+
+- **No necesitas instalar Node.js en tu equipo.** Todo lo ejecuta Docker
+  adentro: tu máquina solo aporta los archivos de texto.
+- **Crea los archivos a mano.** En una carpeta llamada `mi-app` escribe
+  estos dos archivos con tu editor, tal cual se muestran abajo.
+- **El `Dockerfile` se crea en la misma carpeta**, junto a ellos. Su nombre
+  es exactamente `Dockerfile`: con mayúscula inicial y **sin extensión**
+  (no es `Dockerfile.txt` ni `dockerfile`). Lo escribirás en la sección
+  siguiente; por ahora deja la carpeta con estos dos archivos:
+
+```js title="server.js"
+import http from "node:http";
+
+const server = http.createServer((req, res) => {
+  res.end("Hola desde mi-app");
+});
+
+server.listen(3000, "0.0.0.0", () => {
+  console.log("Listo en el puerto 3000");
+});
+```
+
+```json title="package.json"
+{
+  "name": "mi-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
+```
+
+Este ejemplo no tiene dependencias externas, así que no hay archivo de bloqueo que crear: con `server.js` y `package.json` alcanza. En proyectos reales con dependencias existe además `pnpm-lock.yaml`, que fija las versiones exactas, y se copia junto a `package.json`. Lo verás en la lección de Node.js. El `Dockerfile` vivirá en la misma carpeta. Todo el ejemplo se ejecuta desde ahí.
+
+## La receta mínima: base y orden de arranque
+
+Toda receta necesita dos cosas: de dónde partir y qué ejecutar al iniciar. Este archivo mínimo ya construye:
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+CMD ["node", "--version"]
+```
+
+**Qué hace:** `FROM` elige la imagen de partida. `CMD` define el programa que corre cuando el contenedor inicia.
+
+**Por qué existe:** Docker no adivina el sistema ni el arranque. Sin punto de partida no hay capas sobre las cuales construir. Sin orden de arranque el contenedor no sabe qué proceso mantener vivo.
+
+**Qué se rompe sin estas líneas:** sin `FROM` el build falla porque falta la primera capa. Sin `CMD` el contenedor inicia y termina de inmediato porque no tiene proceso principal.
+
+Este mínimo funciona pero no empaqueta tu programa todavía. Las secciones siguientes agregan tu código a esta base, una instrucción por vez.
+
+## Punto de partida: la imagen base
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+```
+
+**Qué hace:** fija la base sobre la cual se construye todo lo demás. Incluye el sistema mínimo y el runtime de Node listos para usar.
+
+**Por qué existe:** tu programa necesita un entorno antes de copiar archivos. Esta base evita instalar Node a mano en cada build.
+
+**Qué se rompe sin esta línea:** nada construye. `FROM` debe ser la primera instrucción del archivo. Sin ella Docker no sabe sobre qué capas apilar las tuyas.
+
+El nombre se lee en tres partes: `node` es la imagen oficial, `26` selecciona la versión mayor y `alpine` es la variante base mínima. Alpine deja imágenes pequeñas y sirve para esta práctica. No es automáticamente la mejor opción en todos los proyectos: dependencias nativas, compatibilidad de libc y herramientas de compilación pueden pedir otra variante.
+
+## Carpeta de trabajo dentro de la imagen
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+WORKDIR /app
+CMD ["node", "--version"]
+```
+
+**Qué hace:** `WORKDIR /app` crea la carpeta `/app` dentro de la imagen y la marca como carpeta actual. Todo `COPY`, `RUN` y `CMD` posterior trabaja relativo a ella.
+
+**Por qué existe:** evita rutas absolutas largas y mantiene los archivos de tu app en un lugar predecible.
+
+**Qué se rompe sin esta línea:** los archivos caen en la raíz `/` de la imagen. Las rutas se vuelven confusas y cada instrucción necesita repetir la ruta completa.
+
+Piensa en `WORKDIR` como el `cd` inicial dentro de la imagen: entras a `/app` una vez y el resto del archivo ya trabaja ahí.
+
+## Primero los manifiestos: qué copiar antes del código
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+WORKDIR /app
+COPY package.json ./
+```
+
+**Qué hace:** `COPY <origen> <destino>` copia archivos a la imagen. El origen vive en tu máquina. El destino vive dentro de la imagen. Aquí el origen es el manifiesto y el destino es `./`, que significa la carpeta actual dentro de la imagen, es decir `/app`.
+
+**Por qué existe:** los manifiestos describen las dependencias sin incluir tu código. Copiarlos primero permite instalar dependencias en una capa separada que cambia poco.
+
+**Qué se rompe sin esta línea:** la instalación posterior no encuentra `package.json` y falla. Si en cambio copias todo el proyecto aquí, cualquier cambio en tu código invalida la caché y reinstala dependencias cada vez.
+
+El orden de `COPY` es siempre origen y después destino. El origen sale del contexto de build. El destino es el filesystem de la imagen.
+
+## Instalar dependencias durante la construcción
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+WORKDIR /app
+COPY package.json ./
+RUN corepack enable && pnpm install
+```
+
+**Qué hace:** `RUN` ejecuta una orden durante la construcción y guarda el resultado como una capa. Aquí habilita `corepack` e instala las dependencias fijadas por el lockfile.
+
+**Por qué existe:** deja las dependencias cocidas dentro de la imagen. Cada contenedor creado desde ella ya trae lo necesario sin descargar nada al iniciar.
+
+**Qué se rompe sin esta línea:** la imagen no contiene dependencias. El contenedor inicia y el programa falla al pedir un módulo que no existe.
+
+<Callout variant="info" title="Tiempo de construcción frente a tiempo de contenedor">
+`RUN` corre al construir la imagen. `CMD` corre al iniciar el contenedor. Uno prepara la plantilla. El otro pone en marcha el programa.
+</Callout>
+
+## Después el código: por qué va al final
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+WORKDIR /app
+COPY package.json ./
+RUN corepack enable && pnpm install
+COPY . .
+```
+
+**Qué hace:** `COPY . .` copia todo el contexto a la imagen. El primer punto es tu carpeta de proyecto en tu máquina. El segundo punto es la carpeta actual dentro de la imagen, es decir `/app`.
+
+**Por qué existe y por qué va al final:** tu código cambia con frecuencia. Al copiarlo después de instalar dependencias, los cambios de código no invalidan la capa de instalación. Solo la última capa se reconstruye.
+
+**Qué se rompe sin esta línea:** la imagen tiene dependencias pero no tu `server.js`. El arranque falla porque el archivo principal no existe dentro.
+
+Si inviertes el orden y copias el código antes de instalar, cada edición de `server.js` obliga a reinstalar todo. Estable primero y cambiante al final: esa es la intuición completa de la caché.
+
+## La orden de arranque: qué corre al iniciar
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+WORKDIR /app
+COPY package.json ./
+RUN corepack enable && pnpm install
+COPY . .
+CMD ["node", "server.js"]
+```
+
+**Qué hace:** `CMD ["node", "server.js"]` define el proceso principal del contenedor. Corre cuando el contenedor inicia, no durante el build.
+
+**Por qué existe:** una imagen con código y dependencias todavía necesita saber qué programa mantener vivo. Esta línea lo declara.
+
+**Qué se rompe sin esta línea:** el contenedor no tiene proceso principal. Inicia y se detiene de inmediato.
+
+La forma exec con corchetes ejecuta `node` directamente, sin shell intermedia. La forma shell `CMD node server.js` pasa por un shell y complica el manejo de señales y de `docker stop`. Por eso la forma exec es la preferida: el proceso recibe las señales en forma directa.
+
+La distinción en una frase: `RUN` prepara la imagen al construir, `CMD` inicia el programa al ejecutar.
+
+## El archivo completo
+
+Tu carpeta `mi-app` ahora contiene el `Dockerfile` final junto a `server.js` y `package.json`. Esta es la receta completa:
+
+```dockerfile title="Dockerfile"
+FROM node:26-alpine
+WORKDIR /app
+COPY package.json ./
+RUN corepack enable && pnpm install
+COPY . .
+CMD ["node", "server.js"]
+```
+
+Léelo de arriba hacia abajo como una historia: parto de Node, entro a `/app`, traigo el manifiesto, instalo dependencias, traigo el código y declaro el arranque.
+
+## Por qué el orden acelera la construcción
+
+Docker reutiliza una capa si su instrucción y sus archivos no cambiaron. Los manifiestos cambian poco y el código cambia siempre. Por eso los manifiestos van primero y el código va al final.
+
+La prueba es observable. Construye dos veces seguidas sin cambiar nada. Los valores siguientes son ilustrativos:
+
+```bash title="terminal"
+docker build -t mi-app:1.0 .
+```
+
+```text title="resultado" frame="terminal"
+[+] Building 8.2s
+ => [1/4] FROM node:26-alpine
+ => [2/4] COPY package.json ./
+ => [3/4] RUN corepack enable && pnpm install
+ => [4/4] COPY . .
+ => naming to mi-app:1.0
+```
+
+Repite la misma orden sin tocar archivos:
+
+```bash title="terminal"
+docker build -t mi-app:1.0 .
+```
+
+```text title="resultado" frame="terminal"
+[+] Building 0.8s
+ => CACHED [1/3] COPY package.json ./
+ => CACHED [2/3] RUN corepack enable && pnpm install
+ => CACHED [3/3] COPY . .
+```
+
+`CACHED` significa que Docker reutilizó la capa anterior sin ejecutarla de nuevo. Ahora edita solo `server.js` y repite el build: las dos primeras capas siguen en caché y solo la última se reconstruye. Esa es la ganancia del orden.
+
+## Construir la imagen desde tu carpeta
+
+```bash title="terminal"
+docker build -t mi-app:1.0 .
+```
+
+### ¿Qué hace `-t mi-app:1.0`?
+
+Le pone nombre a la imagen que vas a crear: repositorio `mi-app`,
+etiqueta `1.0`. Es el mismo formato `nombre:etiqueta` de
+[Imágenes](./../images/). Sin `-t` la imagen queda sin nombre y cuesta
+referenciarla después con `docker run`.
+
+### ¿Qué es el punto final?
+
+El contexto de build: la carpeta que envías al motor de Docker para
+construir. Todo `COPY` sale de ahí. Por eso la orden se ejecuta desde
+`mi-app`: el punto significa esta carpeta.
+
+Verifica el resultado:
+
+```bash title="terminal"
+docker images
+```
+
+Busca la fila `mi-app` con etiqueta `1.0`. Esa fila es tu plantilla lista para ejecutar.
+
+## Ponerla en marcha y comprobarla
+
+```bash title="terminal"
+docker run -d --name mi-app -p 3000:3000 mi-app:1.0
+```
+
+`-d` ejecuta en segundo plano. `--name mi-app` nombra el contenedor. `-p 3000:3000` publica el puerto: la izquierda es tu equipo y la derecha es el interior del contenedor. La imagen por sí sola no abre puertos en tu equipo: solo `-p` lo hace.
+
+Comprueba el contenedor:
+
+```bash title="terminal"
+docker ps
+```
+
+```text title="resultado" frame="terminal"
+CONTAINER ID   IMAGE        STATUS         PORTS                    NAMES
+a1b2c3d4e5f6   mi-app:1.0   Up 5 seconds   0.0.0.0:3000->3000/tcp   mi-app
+```
+
+Los identificadores anteriores son ilustrativos. Lo importante es ver tu contenedor `mi-app` en estado `Up` con el mapeo `3000->3000`. Abre `http://localhost:3000` en el navegador: verás el mensaje de `server.js`.
+
+Cierra el ciclo con el cierre:
+
+```bash title="terminal"
+docker stop mi-app
+```
+
+```bash title="terminal"
+docker rm mi-app
+```
+
+Detener apaga el contenedor y conserva su espacio. Eliminar borra ese espacio. La imagen `mi-app:1.0` sigue intacta en tu disco.
+
+Si editas `server.js` después, necesitas reconstruir la imagen y recrear el contenedor: la imagen es una plantilla congelada y no se sincroniza sola con tu carpeta. La sincronización en vivo con tu código pertenece a los montajes, que se enseñan en [Volúmenes](./../volumes/).
+
+## No envíes lo innecesario al motor
+
+El contexto incluye todo lo que no excluyas. Este archivo reduce lo que viaja al motor:
+
+```text title=".dockerignore"
+node_modules
+.git
+.env*
+```
+
+`node_modules` excluye las dependencias instaladas en tu máquina: entrarían a la imagen y taparían la instalación limpia hecha con el lockfile. `.git` excluye el historial, que el build no necesita. `.env*` excluye secretos locales, que nunca deben cocerse dentro de una imagen.
+
+Sin `.dockerignore`, tu `node_modules` del host puede copiarse sobre la instalación correcta y fallar dentro del contenedor Linux por diferencias de sistema o arquitectura.
+
+## Tres errores frecuentes
+
+### Olvidaste el punto final del build
+
+**Lo que ves:** ejecutas `docker build -t mi-app:1.0` y Docker responde que falta un argumento o muestra la ayuda en lugar de construir.
+
+**Por qué pasa:** omitiste el contexto. Sin el punto final el motor no sabe de qué carpeta tomar los archivos de `COPY`.
+
+**Cómo comprobarlo:** mira el final de tu orden. Si no termina en un punto o en una ruta de contexto, ese es el problema.
+
+**Arreglo seguro:** agrega el punto al final desde la carpeta del proyecto:
+
+```bash title="terminal"
+docker build -t mi-app:1.0 .
+```
+
+### Confundes origen y destino en COPY
+
+**Lo que ves:** el build falla con un error de archivo no encontrado, o los archivos terminan en una ruta inesperada dentro de la imagen.
+
+**Por qué pasa:** invertiste el orden o leíste mal el destino. `COPY` es siempre origen en tu máquina y después destino en la imagen. `./` como destino significa la carpeta actual dentro de la imagen, no tu máquina.
+
+**Cómo comprobarlo:** lee tu línea de izquierda a derecha. Pregunta: ¿existe este origen en mi carpeta? ¿Este destino es donde WORKDIR apunta? Verifica con `ls` en tu carpeta que el origen exista.
+
+**Arreglo seguro:** vuelve a la forma correcta para manifiestos y para código:
+
+```dockerfile title="Dockerfile"
+COPY package.json ./
+COPY . .
+```
+
+La primera trae solo manifiestos a `/app`. La segunda trae el resto del proyecto a `/app`.
+
+### Cambias el código y ves la versión vieja
+
+**Lo que ves:** editas `server.js`, recargas el navegador y el mensaje no cambió. O el build muestra `CACHED` en las dependencias y sospechas que ignoró tu cambio.
+
+**Por qué pasa:** la imagen es una foto congelada. Cambiar archivos en tu máquina no cambia la imagen ya construida. Además, si ejecutas el contenedor viejo, sigues viendo el código viejo aunque hayas reconstruido.
+
+**Cómo comprobarlo:** confirma que reconstruiste después de editar y que el contenedor en marcha nació de la imagen nueva. Revisa con `docker ps` el nombre del contenedor activo y con `docker images` la hora de tu imagen.
+
+**Arreglo seguro:** reconstruye y recrea el contenedor desde la imagen nueva:
+
+```bash title="terminal"
+docker build -t mi-app:1.0 .
+```
+
+```bash title="terminal"
+docker stop mi-app
+```
+
+```bash title="terminal"
+docker rm mi-app
+```
+
+```bash title="terminal"
+docker run -d --name mi-app -p 3000:3000 mi-app:1.0
+```
+
+`CACHED` en dependencias es normal cuando solo cambió el código: significa que reutilizó la instalación y solo reconstruyó tu última capa. Lo anormal es esperar que el contenedor viejo muestre código nuevo sin reconstruir.
+
+## Lo esencial y siguiente paso
+
+```text
+Dockerfile -> build -> imagen -> run -> contenedor
+```
+
+- El Dockerfile receta una imagen: base, carpeta, manifiestos, instalación, código y arranque.
+- El orden decide la velocidad: lo estable primero conserva la caché, el código al final se reconstruye rápido.
+- `RUN` prepara al construir, `CMD` ejecuta al iniciar. El contexto es la carpeta enviada al motor.
+
+Continúa con [Docker Compose](./../compose/) para coordinar varios servicios como un solo sistema en lugar de encadenar órdenes `docker run`.

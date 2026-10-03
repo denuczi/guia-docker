@@ -1,13 +1,9 @@
 # Deploy the Starlight docs site to GitHub Pages (repo: guia-docker).
 #
-# Standard Astro GitHub Pages flow: build with withastro/action@v3, publish
-# with actions/deploy-pages@v4. Triggers on pushes to main plus manual runs.
-#
-# pnpm note: this project pins pnpm@12.4.2 via `packageManager` (corepack)
-# and ships pnpm-lock.yaml. withastro/action is a GitHub Action, not an npm
-# package, so there is nothing to verify in node_modules (confirmed absent);
-# v3 auto-detects the package manager from the lockfile, so no explicit
-# pnpm bootstrapping is added — the standard flow is kept as-is.
+# Explicit flow (no withastro/action: it forces its own Node 20 and Astro 7
+# requires >=22.12): setup-node 22 -> pnpm 12.4.2 (matches packageManager) ->
+# frozen install -> pnpm build -> upload dist -> deploy-pages@v4.
+# Triggers on pushes to main plus manual runs.
 name: Deploy to GitHub Pages
 
 on:
@@ -34,8 +30,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - name: Build the site
-        uses: withastro/action@v3
+        run: pnpm build
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
 
   deploy:
     needs: build
